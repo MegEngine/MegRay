@@ -66,7 +66,7 @@ ExternalProject_add(
     SOURCE_DIR ${UCX_DIR}
     PREFIX ${UCX_BUILD_DIR}
     CONFIGURE_COMMAND ${UCX_DIR}/configure --enable-mt --with-pic --disable-static
-         --with-cuda --disable-numa --prefix=${UCX_BUILD_DIR} ${UCX_CONFIGURE_ARGS}
+         --with-cuda=${CUDA_HOME} --disable-numa --prefix=${UCX_BUILD_DIR} ${UCX_CONFIGURE_ARGS}
     BUILD_COMMAND ${MAKE_COMMAND} all
     INSTALL_COMMAND ${MAKE_COMMAND} install
     BUILD_BYPRODUCTS ${UCP_LIB} ${UCT_LIB} ${UCS_LIB} ${UCM_LIB}
