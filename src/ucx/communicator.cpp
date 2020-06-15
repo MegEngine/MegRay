@@ -108,6 +108,11 @@ Status UcxCommunicator::init(const std::vector<std::string>& uids) {
 
 Status UcxCommunicator::send(const void* sendbuff, size_t len, uint32_t rank,
         std::shared_ptr<Context> ctx) {
+    // cuda stream synchronize
+    MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_CUDA, "only cuda context supported");
+    cudaStream_t stream = static_cast<CudaContext*>(ctx.get())->get_stream();
+    CUDA_CHECK(cudaStreamSynchronize(stream));
+    // perform send recv
     char sync;
     MEGRAY_CHECK(_send(sendbuff, len, rank));
     MEGRAY_CHECK(_recv(&sync, sizeof(char), rank));  // synchronize
@@ -117,6 +122,11 @@ Status UcxCommunicator::send(const void* sendbuff, size_t len, uint32_t rank,
 
 Status UcxCommunicator::recv(void* recvbuff, size_t len, uint32_t rank,
         std::shared_ptr<Context> ctx) {
+    // cuda stream synchronize
+    MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_CUDA, "only cuda context supported");
+    cudaStream_t stream = static_cast<CudaContext*>(ctx.get())->get_stream();
+    CUDA_CHECK(cudaStreamSynchronize(stream));
+    // perform send recv
     char sync;
     MEGRAY_CHECK(_recv(recvbuff, len, rank));
     MEGRAY_CHECK(_send(&sync, sizeof(char), rank));  // synchronize

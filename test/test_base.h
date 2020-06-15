@@ -21,7 +21,7 @@
 template <typename T>
 void run_test(int nranks, MegRay::Backend backend,
               std::vector<std::vector<T>>& inputs,
-              std::vector<std::vector<T>>& expect_outputs, MegRay::DType dtype,
+              std::vector<std::vector<T>>& expect_outputs,
               std::function<void(std::shared_ptr<MegRay::Communicator>,
                                  std::vector<std::string>&, int,
                                  std::vector<T>&, std::vector<T>&)>

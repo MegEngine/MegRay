@@ -22,7 +22,9 @@ typedef enum {
     MEGRAY_CUDA_ERR = 1,
     MEGRAY_NCCL_ERR = 2,
     MEGRAY_UCX_ERR = 3,
-    MEGRAY_NOT_IMPLEMENTED = 4
+    MEGRAY_ENV_ERROR = 4,
+    MEGRAY_INVALID_ARGUMENT = 5,
+    MEGRAY_NOT_IMPLEMENTED = 6
 } Status;
 
 #define MEGRAY_CHECK(expr)                              \

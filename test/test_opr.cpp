@@ -31,7 +31,10 @@ TEST(TestNcclCommunicator, Init) {
         uids[i] = comms[i]->get_uid();
     }
 
-    auto run = [&](int rank) { comms[rank]->init(uids); };
+    auto run = [&](int rank) {
+        cudaSetDevice(rank);
+        comms[rank]->init(uids);
+    };
 
     std::vector<std::thread> threads;
     for (size_t i = 0; i < nranks; i++) {
@@ -69,37 +72,24 @@ TEST(TestUcxCommunicator, Init) {
 }
 
 TEST(TestOpr, SendRecv) {
-    auto send_comm = MegRay::get_communicator(2, 0, MegRay::MEGRAY_UCX);
-    auto recv_comm = MegRay::get_communicator(2, 1, MegRay::MEGRAY_UCX);
-
-    std::vector<std::string> uids(2);
-    uids[0] = send_comm->get_uid();
-    uids[1] = recv_comm->get_uid();
-
     std::string msg("test_message");
-    size_t len = msg.size();
-    std::string output;
+    const int nranks = 2;
+    const size_t len = msg.size();
 
-    auto sender = [&]() {
-        CUDA_ASSERT(cudaSetDevice(0));
-        send_comm->init(uids);
+    std::vector<std::vector<char>> inputs(nranks);
+    std::vector<std::vector<char>> expected_outputs(nranks);
 
-        cudaStream_t stream;
-        CUDA_ASSERT(cudaStreamCreate(&stream));
-        auto ctx = MegRay::CudaContext::make(stream);
+    for (size_t i = 0; i < len; i++) {
+        inputs[0].push_back(msg[i]);
+        expected_outputs[1].push_back(msg[i]);
+    }
 
-        void* ptr;
-        cudaMalloc(&ptr, len);
-        CUDA_ASSERT(cudaMemcpy(ptr, msg.data(), len, cudaMemcpyHostToDevice));
-
-        send_comm->send(msg.data(), len, 1, ctx);
-
-        CUDA_ASSERT(cudaStreamSynchronize(stream));
-    };
-
-    auto receiver = [&]() {
-        CUDA_ASSERT(cudaSetDevice(1));
-        recv_comm->init(uids);
+    auto run = [len](std::shared_ptr<MegRay::Communicator> comm,
+                     std::vector<std::string>& uids, int rank,
+                     std::vector<char>& input,
+                     std::vector<char>& output) -> void {
+        CUDA_ASSERT(cudaSetDevice(rank));
+        comm->init(uids);
 
         cudaStream_t stream;
         CUDA_ASSERT(cudaStreamCreate(&stream));
@@ -107,23 +97,173 @@ TEST(TestOpr, SendRecv) {
 
         void* ptr;
         CUDA_ASSERT(cudaMalloc(&ptr, len));
-        recv_comm->recv(ptr, len, 0, ctx);
+
+        if (rank == 0) {  // send
+            CUDA_ASSERT(cudaMemcpy(ptr, input.data(), len, cudaMemcpyHostToDevice));
+            comm->send(ptr, len, 1, ctx);
+            CUDA_ASSERT(cudaStreamSynchronize(stream));
+        } else {  // recv
+            comm->recv(ptr, len, 0, ctx);
+            CUDA_ASSERT(cudaStreamSynchronize(stream));
+            CUDA_ASSERT(cudaMemcpy(output.data(), ptr, len, cudaMemcpyDeviceToHost));
+        }
+    };
+
+    run_test<char>(nranks, MegRay::MEGRAY_NCCL, inputs, expected_outputs, run);
+    run_test<char>(nranks, MegRay::MEGRAY_UCX, inputs, expected_outputs, run);
+}
+
+TEST(TestOpr, Scatter) {
+    const int nranks = 3;
+    const size_t recvlen = 10;
+    const int root = 1;
+
+    std::vector<std::vector<float>> inputs(nranks);
+    std::vector<std::vector<float>> outputs(nranks);
+    for (size_t i = 0; i < nranks; i++) {
+        for (size_t j = 0; j < recvlen; j++) {
+            float val = 1.0 * (i + 1) * (j + 2);
+            inputs[root].push_back(val);
+            outputs[i].push_back(val);
+        }
+    }
+
+    auto run = [nranks, recvlen, root](std::shared_ptr<MegRay::Communicator> comm,
+                                       std::vector<std::string>& uids, int rank,
+                                       std::vector<float>& input,
+                                       std::vector<float>& output) -> void {
+        CUDA_ASSERT(cudaSetDevice(rank));
+        comm->init(uids);
+
+        cudaStream_t stream;
+        CUDA_ASSERT(cudaStreamCreate(&stream));
+        auto ctx = MegRay::CudaContext::make(stream);
+
+        void *in_ptr, *out_ptr;
+        CUDA_ASSERT(cudaMalloc(&out_ptr, recvlen * sizeof(float)));
+
+        if (rank == root) {
+            CUDA_ASSERT(cudaMalloc(&in_ptr, nranks * recvlen * sizeof(float)));
+            CUDA_ASSERT(cudaMemcpy(in_ptr, input.data(),
+                                   nranks * recvlen * sizeof(float),
+                                   cudaMemcpyHostToDevice));
+        } else {
+            in_ptr = nullptr;
+        }
+
+        int ret = comm->scatter(in_ptr, out_ptr, recvlen,
+                                MegRay::MEGRAY_FLOAT32, root, ctx);
+        ASSERT_EQ(ret, 0);
+
+        CUDA_ASSERT(cudaStreamSynchronize(stream));
+        CUDA_ASSERT(cudaMemcpy(output.data(), out_ptr,
+                               recvlen * sizeof(float),
+                               cudaMemcpyDeviceToHost));
+    };
+    run_test<float>(nranks, MegRay::MEGRAY_NCCL, inputs, outputs, run);
+    run_test<float>(nranks, MegRay::MEGRAY_UCX, inputs, outputs, run);
+}
+
+TEST(TestOpr, Gather) {
+    const int nranks = 3;
+    const size_t sendlen = 10;
+    const int root = 1;
+
+    std::vector<std::vector<float>> inputs(nranks);
+    std::vector<std::vector<float>> outputs(nranks);
+    for (size_t i = 0; i < nranks; i++) {
+        for (size_t j = 0; j < sendlen; j++) {
+            float val = 1.0 * (i + 1) * (j + 2);
+            inputs[i].push_back(val);
+            outputs[root].push_back(val);
+        }
+    }
+
+    auto run = [nranks, sendlen, root](std::shared_ptr<MegRay::Communicator> comm,
+                                       std::vector<std::string>& uids, int rank,
+                                       std::vector<float>& input,
+                                       std::vector<float>& output) -> void {
+        CUDA_ASSERT(cudaSetDevice(rank));
+        comm->init(uids);
+
+        cudaStream_t stream;
+        CUDA_ASSERT(cudaStreamCreate(&stream));
+        auto ctx = MegRay::CudaContext::make(stream);
+
+        void *in_ptr, *out_ptr;
+        CUDA_ASSERT(cudaMalloc(&in_ptr, sendlen * sizeof(float)));
+        CUDA_ASSERT(cudaMemcpy(in_ptr, input.data(),
+                               sendlen * sizeof(float),
+                               cudaMemcpyHostToDevice));
+
+        if (rank == root) {
+            CUDA_ASSERT(cudaMalloc(&out_ptr, nranks * sendlen * sizeof(float)));
+        } else {
+            out_ptr = nullptr;
+        }
+
+        int ret = comm->gather(in_ptr, out_ptr, sendlen,
+                               MegRay::MEGRAY_FLOAT32, root, ctx);
+        ASSERT_EQ(ret, 0);
 
         CUDA_ASSERT(cudaStreamSynchronize(stream));
 
-        char* outbuff = new char[len];
-        CUDA_ASSERT(cudaMemcpy(outbuff, ptr, len, cudaMemcpyDeviceToHost));
-        output = std::string(outbuff, len);
-        delete outbuff;
+        if (rank == root) {
+            CUDA_ASSERT(cudaMemcpy(output.data(), out_ptr,
+                                   nranks * sendlen * sizeof(float),
+                                   cudaMemcpyDeviceToHost));
+        }
     };
+    run_test<float>(nranks, MegRay::MEGRAY_NCCL, inputs, outputs, run);
+    run_test<float>(nranks, MegRay::MEGRAY_UCX, inputs, outputs, run);
+}
 
-    std::thread send_th(sender);
-    std::thread recv_th(receiver);
+TEST(TestOpr, AllToAll) {
+    const int nranks = 3;
+    const size_t len = 6;
 
-    send_th.join();
-    recv_th.join();
+    std::vector<std::vector<float>> inputs(nranks, std::vector<float>(nranks * len));
+    std::vector<std::vector<float>> outputs(nranks, std::vector<float>(nranks * len));
+    for (size_t i = 0; i < nranks; i++) {
+        for (size_t j = 0; j < nranks; j++) {
+            for (size_t k = 0; k < len; k++) {
+                float val = 1.0 * (i + 1) * (j + 2) * (k + 3);
+                inputs[i][j * len + k] = val;
+                outputs[j][i * len + k] = val;
+            }
+        }
+    }
 
-    ASSERT_EQ(msg, output);
+    auto run = [nranks, len](std::shared_ptr<MegRay::Communicator> comm,
+                             std::vector<std::string>& uids, int rank,
+                             std::vector<float>& input,
+                             std::vector<float>& output) -> void {
+        CUDA_ASSERT(cudaSetDevice(rank));
+        comm->init(uids);
+
+        cudaStream_t stream;
+        CUDA_ASSERT(cudaStreamCreate(&stream));
+        auto ctx = MegRay::CudaContext::make(stream);
+
+        void *in_ptr, *out_ptr;
+        CUDA_ASSERT(cudaMalloc(&in_ptr, nranks * len * sizeof(float)));
+        CUDA_ASSERT(cudaMemcpy(in_ptr, input.data(),
+                               nranks * len * sizeof(float),
+                               cudaMemcpyHostToDevice));
+        CUDA_ASSERT(cudaMalloc(&out_ptr, nranks * len * sizeof(float)));
+
+        int ret = comm->all_to_all(in_ptr, out_ptr, len,
+                                   MegRay::MEGRAY_FLOAT32, ctx);
+        ASSERT_EQ(ret, 0);
+
+        CUDA_ASSERT(cudaStreamSynchronize(stream));
+
+        CUDA_ASSERT(cudaMemcpy(output.data(), out_ptr,
+                               nranks * len * sizeof(float),
+                               cudaMemcpyDeviceToHost));
+    };
+    run_test<float>(nranks, MegRay::MEGRAY_NCCL, inputs, outputs, run);
+    run_test<float>(nranks, MegRay::MEGRAY_UCX, inputs, outputs, run);
 }
 
 TEST(TestOpr, AllGather) {
@@ -169,10 +309,8 @@ TEST(TestOpr, AllGather) {
                                nranks * sendlen * sizeof(float),
                                cudaMemcpyDeviceToHost));
     };
-    run_test<float>(nranks, MegRay::MEGRAY_NCCL, inputs, outputs,
-                    MegRay::MEGRAY_FLOAT32, run);
-    run_test<float>(nranks, MegRay::MEGRAY_UCX, inputs, outputs,
-                    MegRay::MEGRAY_FLOAT32, run);
+    run_test<float>(nranks, MegRay::MEGRAY_NCCL, inputs, outputs, run);
+    run_test<float>(nranks, MegRay::MEGRAY_UCX, inputs, outputs, run);
 }
 
 TEST(TestOpr, AllReduce) {
@@ -223,9 +361,9 @@ TEST(TestOpr, AllReduce) {
         }
     }
     run_test<float>(nranks, MegRay::MEGRAY_NCCL, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_SUM));
+                    reduce_func(MegRay::MEGRAY_SUM));
     run_test<float>(nranks, MegRay::MEGRAY_UCX, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_SUM));
+                    reduce_func(MegRay::MEGRAY_SUM));
 
     for (size_t j = 0; j < len; j++) {
         float max_val = std::numeric_limits<float>::min();
@@ -238,9 +376,9 @@ TEST(TestOpr, AllReduce) {
         }
     }
     run_test<float>(nranks, MegRay::MEGRAY_NCCL, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_MAX));
+                    reduce_func(MegRay::MEGRAY_MAX));
     run_test<float>(nranks, MegRay::MEGRAY_UCX, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_MAX));
+                    reduce_func(MegRay::MEGRAY_MAX));
 
     for (size_t j = 0; j < len; j++) {
         float min_val = std::numeric_limits<float>::max();
@@ -253,9 +391,9 @@ TEST(TestOpr, AllReduce) {
         }
     }
     run_test<float>(nranks, MegRay::MEGRAY_NCCL, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_MIN));
+                    reduce_func(MegRay::MEGRAY_MIN));
     run_test<float>(nranks, MegRay::MEGRAY_UCX, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_MIN));
+                    reduce_func(MegRay::MEGRAY_MIN));
 }
 
 TEST(TestOpr, ReduceScatterSum) {
@@ -310,9 +448,9 @@ TEST(TestOpr, ReduceScatterSum) {
         }
     }
     run_test<float>(nranks, MegRay::MEGRAY_NCCL, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_SUM));
+                    reduce_func(MegRay::MEGRAY_SUM));
     run_test<float>(nranks, MegRay::MEGRAY_UCX, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_SUM));
+                    reduce_func(MegRay::MEGRAY_SUM));
 
     for (int k = 0; k < nranks; k++) {
         for (size_t j = 0; j < recvlen; j++) {
@@ -326,9 +464,9 @@ TEST(TestOpr, ReduceScatterSum) {
         }
     }
     run_test<float>(nranks, MegRay::MEGRAY_NCCL, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_MAX));
+                    reduce_func(MegRay::MEGRAY_MAX));
     run_test<float>(nranks, MegRay::MEGRAY_UCX, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_MAX));
+                    reduce_func(MegRay::MEGRAY_MAX));
     for (int k = 0; k < nranks; k++) {
         for (size_t j = 0; j < recvlen; j++) {
             float min_val = std::numeric_limits<float>::max();
@@ -341,9 +479,9 @@ TEST(TestOpr, ReduceScatterSum) {
         }
     }
     run_test<float>(nranks, MegRay::MEGRAY_NCCL, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_MIN));
+                    reduce_func(MegRay::MEGRAY_MIN));
     run_test<float>(nranks, MegRay::MEGRAY_UCX, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_MIN));
+                    reduce_func(MegRay::MEGRAY_MIN));
 }
 
 TEST(TestOpr, Broadcast) {
@@ -389,10 +527,8 @@ TEST(TestOpr, Broadcast) {
                                cudaMemcpyDeviceToHost));
     };
 
-    run_test<float>(nranks, MegRay::MEGRAY_NCCL, inputs, outputs,
-                    MegRay::MEGRAY_FLOAT32, run);
-    run_test<float>(nranks, MegRay::MEGRAY_UCX, inputs, outputs,
-                    MegRay::MEGRAY_FLOAT32, run);
+    run_test<float>(nranks, MegRay::MEGRAY_NCCL, inputs, outputs, run);
+    run_test<float>(nranks, MegRay::MEGRAY_UCX, inputs, outputs, run);
 }
 
 TEST(TestOpr, ReduceSum) {
@@ -447,9 +583,9 @@ TEST(TestOpr, ReduceSum) {
         expected_outputs[root][j] = sum;
     }
     run_test<float>(nranks, MegRay::MEGRAY_NCCL, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_SUM));
+                    reduce_func(MegRay::MEGRAY_SUM));
     run_test<float>(nranks, MegRay::MEGRAY_UCX, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_SUM));
+                    reduce_func(MegRay::MEGRAY_SUM));
     for (size_t j = 0; j < len; j++) {
         float max_val = std::numeric_limits<float>::min();
         for (size_t i = 0; i < nranks; i++) {
@@ -459,9 +595,9 @@ TEST(TestOpr, ReduceSum) {
         expected_outputs[root][j] = max_val;
     }
     run_test<float>(nranks, MegRay::MEGRAY_NCCL, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_MAX));
+                    reduce_func(MegRay::MEGRAY_MAX));
     run_test<float>(nranks, MegRay::MEGRAY_UCX, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_MAX));
+                    reduce_func(MegRay::MEGRAY_MAX));
     for (size_t j = 0; j < len; j++) {
         float min_val = std::numeric_limits<float>::max();
         for (size_t i = 0; i < nranks; i++) {
@@ -471,7 +607,7 @@ TEST(TestOpr, ReduceSum) {
         expected_outputs[root][j] = min_val;
     }
     run_test<float>(nranks, MegRay::MEGRAY_NCCL, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_MIN));
+                    reduce_func(MegRay::MEGRAY_MIN));
     run_test<float>(nranks, MegRay::MEGRAY_UCX, inputs, expected_outputs,
-                    MegRay::MEGRAY_FLOAT32, reduce_func(MegRay::MEGRAY_MIN));
+                    reduce_func(MegRay::MEGRAY_MIN));
 }

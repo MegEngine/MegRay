@@ -41,6 +41,15 @@ class UcxCommunicator : public Communicator {
         Status recv(void* recvbuff, size_t len, uint32_t rank,
                 std::shared_ptr<Context> ctx) override;
 
+        Status scatter(const void* sendbuff, void* recvbuff, size_t recvlen,
+                DType dtype, uint32_t root, std::shared_ptr<Context> ctx) override;
+
+        Status gather(const void* sendbuff, void* recvbuff, size_t sendlen,
+                DType dtype, uint32_t root, std::shared_ptr<Context> ctx) override;
+
+        Status all_to_all(const void* sendbuff, void* recvbuff, size_t len,
+                DType dtype, std::shared_ptr<Context> ctx) override;
+
         Status all_gather(const void* sendbuff, void* recvbuff, size_t sendlen,
                 DType dtype, std::shared_ptr<Context> ctx) override;
 

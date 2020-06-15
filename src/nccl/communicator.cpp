@@ -15,6 +15,15 @@
 
 #include "utils.h"
 
+#define CHECK_LAUNCH_MODE                                                  \
+    do {                                                                   \
+        const char* str = getenv("NCCL_LAUNCH_MODE");                      \
+        if (!str or strcmp(str, "PARALLEL") != 0) {                        \
+            MEGRAY_ERROR("please set NCCL_LAUNCH_MODE to \"PARALLEL\"\n"); \
+            return MEGRAY_ENV_ERROR;                                       \
+        }                                                                  \
+    } while (0)
+
 namespace MegRay {
 
 NcclCommunicator::NcclCommunicator(int nranks, int rank) :
@@ -47,16 +56,89 @@ Status NcclCommunicator::init(const std::vector<std::string>& uids) {
 
 Status NcclCommunicator::send(const void* sendbuff, size_t len, uint32_t rank,
         std::shared_ptr<Context> ctx) {
-    // derived from base class, not implemented
-    MEGRAY_THROW("not implemented");
-    return MEGRAY_NOT_IMPLEMENTED;
+    // check context type and get cuda stream
+    MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_CUDA, "only cuda context supported");
+    cudaStream_t stream = static_cast<CudaContext*>(ctx.get())->get_stream();
+    // perform nccl send synchronously
+    NCCL_CHECK(ncclSend(sendbuff, len, ncclChar, rank, m_comm, stream));
+    CUDA_CHECK(cudaStreamSynchronize(stream));
+    return MEGRAY_OK;
 }
 
-Status NcclCommunicator::recv(void* recvbuf, size_t len, uint32_t rank,
+Status NcclCommunicator::recv(void* recvbuff, size_t len, uint32_t rank,
         std::shared_ptr<Context> ctx) {
-    // derived from base class, not implemented
-    MEGRAY_THROW("not implemented");
-    return MEGRAY_NOT_IMPLEMENTED;
+    // check context type and get cuda stream
+    MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_CUDA, "only cuda context supported");
+    cudaStream_t stream = static_cast<CudaContext*>(ctx.get())->get_stream();
+    // perform nccl send synchronously
+    NCCL_CHECK(ncclRecv(recvbuff, len, ncclChar, rank, m_comm, stream));
+    CUDA_CHECK(cudaStreamSynchronize(stream));
+    return MEGRAY_OK;
+}
+
+Status NcclCommunicator::scatter(const void* sendbuff, void* recvbuff,
+        size_t recvlen, DType dtype, uint32_t root, std::shared_ptr<Context> ctx) {
+    // check context type and get cuda stream
+    MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_CUDA, "only cuda context supported");
+    cudaStream_t stream = static_cast<CudaContext*>(ctx.get())->get_stream();
+    ncclDataType_t nccl_dtype = get_nccl_dtype(dtype);
+    CHECK_LAUNCH_MODE;
+    // perform nccl send/recv in a group
+    ncclGroupStart();
+    if (m_rank == root) {
+        for (size_t r = 0; r < m_nranks; r++) {
+            const char* p = (const char*)sendbuff + r * recvlen * get_dtype_size(dtype);
+            NCCL_CHECK(ncclSend((const void*)p, recvlen, nccl_dtype, r, m_comm, stream));
+        }
+    }
+    NCCL_CHECK(ncclRecv(recvbuff, recvlen, nccl_dtype, root, m_comm, stream));
+    ncclGroupEnd();
+    // cuda stream synchronize
+    CUDA_CHECK(cudaStreamSynchronize(stream));
+    return MEGRAY_OK;
+}
+
+Status NcclCommunicator::gather(const void* sendbuff, void* recvbuff,
+        size_t sendlen, DType dtype, uint32_t root, std::shared_ptr<Context> ctx) {
+    // check context type and get cuda stream
+    MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_CUDA, "only cuda context supported");
+    cudaStream_t stream = static_cast<CudaContext*>(ctx.get())->get_stream();
+    ncclDataType_t nccl_dtype = get_nccl_dtype(dtype);
+    CHECK_LAUNCH_MODE;
+    // perform nccl send/recv in a group
+    ncclGroupStart();
+    if (m_rank == root) {
+        for (size_t r = 0; r < m_nranks; r++) {
+            char* p = (char*)recvbuff + r * sendlen * get_dtype_size(dtype);
+            NCCL_CHECK(ncclRecv((void*)p, sendlen, nccl_dtype, r, m_comm, stream));
+        }
+    }
+    NCCL_CHECK(ncclSend(sendbuff, sendlen, nccl_dtype, root, m_comm, stream));
+    ncclGroupEnd();
+    // cuda stream synchronize
+    CUDA_CHECK(cudaStreamSynchronize(stream));
+    return MEGRAY_OK;
+}
+
+Status NcclCommunicator::all_to_all(const void* sendbuff, void* recvbuff,
+        size_t len, DType dtype, std::shared_ptr<Context> ctx) {
+    // check context type and get cuda stream
+    MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_CUDA, "only cuda context supported");
+    cudaStream_t stream = static_cast<CudaContext*>(ctx.get())->get_stream();
+    ncclDataType_t nccl_dtype = get_nccl_dtype(dtype);
+    CHECK_LAUNCH_MODE;
+    // perform nccl send/recv in a group
+    ncclGroupStart();
+    for (size_t r = 0; r < m_nranks; r++) {
+        const char* p = (const char*)sendbuff + r * len * get_dtype_size(dtype);
+        char* q = (char*)recvbuff + r * len * get_dtype_size(dtype);
+        NCCL_CHECK(ncclSend((const void*)p, len, nccl_dtype, r, m_comm, stream));
+        NCCL_CHECK(ncclRecv((void*)q, len, nccl_dtype, r, m_comm, stream));
+    }
+    ncclGroupEnd();
+    // cuda stream synchronize
+    CUDA_CHECK(cudaStreamSynchronize(stream));
+    return MEGRAY_OK;
 }
 
 Status NcclCommunicator::all_gather(const void* sendbuff, void* recvbuff, size_t sendlen,

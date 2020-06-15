@@ -51,6 +51,20 @@ class Communicator {
         virtual Status recv(void* recvbuf, size_t len, uint32_t rank,
                 std::shared_ptr<Context> ctx) = 0;
 
+        // the length of sendbuff = recvlen * m_nranks
+        // the length of recvbuff = recvlen
+        virtual Status scatter(const void* sendbuff, void* recvbuff, size_t recvlen,
+                DType dtype, uint32_t root, std::shared_ptr<Context> ctx) = 0;
+
+        // the length of sendbuff = sendlen
+        // the length of recvbuff = sendlen * m_nranks
+        virtual Status gather(const void* sendbuff, void* recvbuff, size_t sendlen,
+                DType dtype, uint32_t root, std::shared_ptr<Context> ctx) = 0;
+
+        // the length of sendbuff = the length of recvbuff = len * m_nranks
+        virtual Status all_to_all(const void* sendbuff, void* recvbuff, size_t len,
+                DType dtype, std::shared_ptr<Context> ctx) = 0;
+
 	// the length of sendbuff = sendlen
         // the length of recvbuff = sendlen * m_nranks
         virtual Status all_gather(const void* sendbuff, void* recvbuff, size_t sendlen,
