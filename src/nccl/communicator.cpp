@@ -28,7 +28,6 @@ namespace MegRay {
 
 NcclCommunicator::NcclCommunicator(int nranks, int rank) :
         Communicator(nranks, rank), m_inited(false) {
-    NCCL_ASSERT(ncclGetUniqueId(&m_uid));
 }
 
 NcclCommunicator::~NcclCommunicator() {
@@ -37,19 +36,14 @@ NcclCommunicator::~NcclCommunicator() {
     }
 }
 
-std::string NcclCommunicator::get_uid() {
-    // serialize ncclUniqueId into a string
-    return std::string(m_uid.internal, NCCL_UNIQUE_ID_BYTES);
-}
-
-Status NcclCommunicator::init(const std::vector<std::string>& uids) {
-    MEGRAY_ASSERT(uids.size() == m_nranks, "incorrect size of uids");
-    // only use unique id of rank 0 for initialization
-    const std::string uid = uids[0];
-    MEGRAY_ASSERT(uid.size() == NCCL_UNIQUE_ID_BYTES, "invalid uid");
-    memcpy(m_uid.internal, uid.data(), NCCL_UNIQUE_ID_BYTES);
-    // initialize nccl communicator
-    NCCL_CHECK(ncclCommInitRank(&m_comm, m_nranks, m_uid, m_rank));
+Status NcclCommunicator::do_init() {
+    uint32_t root = 0;
+    ncclUniqueId uid;
+    if (m_rank == root) {
+        ncclGetUniqueId(&uid);
+    }
+    MEGRAY_CHECK(m_client->broadcast(&uid, &uid, NCCL_UNIQUE_ID_BYTES, root));
+    NCCL_CHECK(ncclCommInitRank(&m_comm, m_nranks, uid, m_rank));
     m_inited = true;
     return MEGRAY_OK;
 }

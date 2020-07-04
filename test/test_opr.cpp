@@ -18,22 +18,18 @@
 
 #include <gtest/gtest.h>
 
-#include "../src/megray.h"
 #include "test_base.h"
 
 TEST(TestNcclCommunicator, Init) {
     const int nranks = 3;
-
-    std::vector<std::shared_ptr<MegRay::Communicator>> comms(nranks);
-    std::vector<std::string> uids(nranks);
-    for (size_t i = 0; i < nranks; i++) {
-        comms[i] = MegRay::get_communicator(nranks, i, MegRay::MEGRAY_NCCL);
-        uids[i] = comms[i]->get_uid();
-    }
+    const int port = MegRay::get_free_port();
+    auto ret = MegRay::create_server(nranks, port);
+    ASSERT_EQ(MegRay::MEGRAY_OK, ret);
 
     auto run = [&](int rank) {
         cudaSetDevice(rank);
-        comms[rank]->init(uids);
+        auto comm = MegRay::get_communicator(nranks, rank, MegRay::MEGRAY_NCCL);
+        ASSERT_EQ(MegRay::MEGRAY_OK, comm->init("localhost", port));
     };
 
     std::vector<std::thread> threads;
@@ -48,17 +44,14 @@ TEST(TestNcclCommunicator, Init) {
 
 TEST(TestUcxCommunicator, Init) {
     const int nranks = 3;
-
-    std::vector<std::shared_ptr<MegRay::Communicator>> comms(nranks);
-    std::vector<std::string> uids(nranks);
-    for (int i = 0; i < nranks; i++) {
-        comms[i] = MegRay::get_communicator(nranks, i, MegRay::MEGRAY_UCX);
-        uids[i] = comms[i]->get_uid();
-    }
+    const int port = MegRay::get_free_port();
+    auto ret = MegRay::create_server(nranks, port);
+    ASSERT_EQ(MegRay::MEGRAY_OK, ret);
 
     auto run = [&](int rank) {
         cudaSetDevice(rank);
-        comms[rank]->init(uids);
+        auto comm = MegRay::get_communicator(nranks, rank, MegRay::MEGRAY_UCX);
+        ASSERT_EQ(MegRay::MEGRAY_OK, comm->init("localhost", port));
     };
 
     std::vector<std::thread> threads;
@@ -85,11 +78,11 @@ TEST(TestOpr, SendRecv) {
     }
 
     auto run = [len](std::shared_ptr<MegRay::Communicator> comm,
-                     std::vector<std::string>& uids, int rank,
+                     int port, int rank,
                      std::vector<char>& input,
                      std::vector<char>& output) -> void {
         CUDA_ASSERT(cudaSetDevice(rank));
-        comm->init(uids);
+        comm->init("localhost", port);
 
         cudaStream_t stream;
         CUDA_ASSERT(cudaStreamCreate(&stream));
@@ -129,11 +122,11 @@ TEST(TestOpr, Scatter) {
     }
 
     auto run = [nranks, recvlen, root](std::shared_ptr<MegRay::Communicator> comm,
-                                       std::vector<std::string>& uids, int rank,
+                                       int port, int rank,
                                        std::vector<float>& input,
                                        std::vector<float>& output) -> void {
         CUDA_ASSERT(cudaSetDevice(rank));
-        comm->init(uids);
+        comm->init("localhost", port);
 
         cudaStream_t stream;
         CUDA_ASSERT(cudaStreamCreate(&stream));
@@ -180,11 +173,11 @@ TEST(TestOpr, Gather) {
     }
 
     auto run = [nranks, sendlen, root](std::shared_ptr<MegRay::Communicator> comm,
-                                       std::vector<std::string>& uids, int rank,
+                                       int port, int rank,
                                        std::vector<float>& input,
                                        std::vector<float>& output) -> void {
         CUDA_ASSERT(cudaSetDevice(rank));
-        comm->init(uids);
+        comm->init("localhost", port);
 
         cudaStream_t stream;
         CUDA_ASSERT(cudaStreamCreate(&stream));
@@ -235,11 +228,11 @@ TEST(TestOpr, AllToAll) {
     }
 
     auto run = [nranks, len](std::shared_ptr<MegRay::Communicator> comm,
-                             std::vector<std::string>& uids, int rank,
+                             int port, int rank,
                              std::vector<float>& input,
                              std::vector<float>& output) -> void {
         CUDA_ASSERT(cudaSetDevice(rank));
-        comm->init(uids);
+        comm->init("localhost", port);
 
         cudaStream_t stream;
         CUDA_ASSERT(cudaStreamCreate(&stream));
@@ -283,11 +276,11 @@ TEST(TestOpr, AllGather) {
     }
 
     auto run = [nranks, sendlen](std::shared_ptr<MegRay::Communicator> comm,
-                                 std::vector<std::string>& uids, int rank,
+                                 int port, int rank,
                                  std::vector<float>& input,
                                  std::vector<float>& output) -> void {
         CUDA_ASSERT(cudaSetDevice(rank));
-        comm->init(uids);
+        comm->init("localhost", port);
 
         cudaStream_t stream;
         CUDA_ASSERT(cudaStreamCreate(&stream));
@@ -322,11 +315,11 @@ TEST(TestOpr, AllReduce) {
 
     auto reduce_func = [nranks, len](MegRay::ReduceOp op) {
         auto run = [nranks, len, op](std::shared_ptr<MegRay::Communicator> comm,
-                                     std::vector<std::string>& uids, int rank,
+                                     int port, int rank,
                                      std::vector<float>& input,
                                      std::vector<float>& output) {
             CUDA_ASSERT(cudaSetDevice(rank));
-            comm->init(uids);
+            comm->init("localhost", port);
 
             cudaStream_t stream;
             CUDA_ASSERT(cudaStreamCreate(&stream));
@@ -407,10 +400,10 @@ TEST(TestOpr, ReduceScatterSum) {
     auto reduce_func = [nranks, recvlen](MegRay::ReduceOp op) {
         auto run = [nranks, recvlen,
                     op](std::shared_ptr<MegRay::Communicator> comm,
-                        std::vector<std::string>& uids, int rank,
+                        int port, int rank,
                         std::vector<float>& input, std::vector<float>& output) {
             CUDA_ASSERT(cudaSetDevice(rank));
-            comm->init(uids);
+            comm->init("localhost", port);
 
             cudaStream_t stream;
             CUDA_ASSERT(cudaStreamCreate(&stream));
@@ -501,11 +494,11 @@ TEST(TestOpr, Broadcast) {
     }
 
     auto run = [nranks, root, len](std::shared_ptr<MegRay::Communicator> comm,
-                                   std::vector<std::string>& uids, int rank,
+                                   int port, int rank,
                                    std::vector<float>& input,
                                    std::vector<float>& output) {
         CUDA_ASSERT(cudaSetDevice(rank));
-        comm->init(uids);
+        comm->init("localhost", port);
 
         cudaStream_t stream;
         CUDA_ASSERT(cudaStreamCreate(&stream));
@@ -543,10 +536,10 @@ TEST(TestOpr, ReduceSum) {
     auto reduce_func = [nranks, root, len](MegRay::ReduceOp op) {
         auto run = [nranks, root, len,
                     op](std::shared_ptr<MegRay::Communicator> comm,
-                        std::vector<std::string>& uids, int rank,
+                        int port, int rank,
                         std::vector<float>& input, std::vector<float>& output) {
             CUDA_ASSERT(cudaSetDevice(rank));
-            comm->init(uids);
+            comm->init("localhost", port);
 
             cudaStream_t stream;
             CUDA_ASSERT(cudaStreamCreate(&stream));

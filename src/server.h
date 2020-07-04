@@ -1,5 +1,5 @@
 /**
- * \file src/megray.h
+ * \file src/server.h
  * MegRay is Licensed under the Apache License, Version 2.0 (the "License")
  *
  * Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
@@ -11,5 +11,17 @@
 
 #pragma once
 
-#include "server.h"
-#include "communicator.h"
+#include <mutex>
+
+#include "common.h"
+
+namespace MegRay {
+
+char* get_host_ip();
+
+int get_free_port();
+
+// create megray server
+Status create_server(uint32_t nranks, int port);
+
+} // namespace MegRay

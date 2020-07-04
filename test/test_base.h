@@ -22,23 +22,24 @@ template <typename T>
 void run_test(int nranks, MegRay::Backend backend,
               std::vector<std::vector<T>>& inputs,
               std::vector<std::vector<T>>& expect_outputs,
-              std::function<void(std::shared_ptr<MegRay::Communicator>,
-                                 std::vector<std::string>&, int,
+              std::function<void(std::shared_ptr<MegRay::Communicator>, int, int,
                                  std::vector<T>&, std::vector<T>&)>
                       main_func) {
     std::vector<std::shared_ptr<MegRay::Communicator>> comms(nranks);
-    std::vector<std::string> uids(nranks);
     std::vector<std::vector<T>> outputs(nranks);
+
+    int port = MegRay::get_free_port();
+    auto ret = MegRay::create_server(nranks, port);
+    ASSERT_EQ(MegRay::MEGRAY_OK, ret);
 
     for (int i = 0; i < nranks; i++) {
         comms[i] = MegRay::get_communicator(nranks, i, backend);
-        uids[i] = comms[i]->get_uid();
         outputs[i].resize(expect_outputs[i].size());
     }
 
     std::vector<std::thread> threads;
     for (int i = 0; i < nranks; i++) {
-        threads.push_back(std::thread(main_func, comms[i], std::ref(uids), i,
+        threads.push_back(std::thread(main_func, comms[i], port, i,
                                       std::ref(inputs[i]),
                                       std::ref(outputs[i])));
     }

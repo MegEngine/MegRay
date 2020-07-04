@@ -30,10 +30,7 @@ class UcxCommunicator : public Communicator {
 
         ~UcxCommunicator();
 
-        // get a serialized string of ucp worker address
-        std::string get_uid() override;
-
-        Status init(const std::vector<std::string>& uids) override;
+        Status do_init() override;
 
         Status send(const void* sendbuff, size_t len, uint32_t rank,
                 std::shared_ptr<Context> ctx) override;

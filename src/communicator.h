@@ -17,6 +17,7 @@
 
 #include "common.h"
 #include "context.h"
+#include "client.h"
 
 namespace MegRay {
 
@@ -37,11 +38,11 @@ class Communicator {
         // get the rank of this process
         uint32_t rank() { return m_rank; }
 
-        // get the unique id of this communicator
-        virtual std::string get_uid() = 0;
+        // establish connection with megray server
+        Status init(const char* master_ip, int port);
 
-        // build a group with unique ids of all communicators in the group
-        virtual Status init(const std::vector<std::string>& uids) = 0;
+        // implemented in the subclass and called in init()
+        virtual Status do_init() = 0;
 
         // send data to another communicator in the group
         virtual Status send(const void* sendbuff, size_t len, uint32_t rank,
@@ -90,6 +91,7 @@ class Communicator {
     protected:
         uint32_t m_nranks;
         uint32_t m_rank;
+        std::shared_ptr<Client> m_client;
 };
 
 /*!

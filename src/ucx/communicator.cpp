@@ -73,32 +73,38 @@ UcxCommunicator::~UcxCommunicator() {
     ucp_cleanup(m_context);
 }
 
-std::string UcxCommunicator:: get_uid() {
-    size_t addr_len;
-    ucp_address_t* addr;
+Status UcxCommunicator::do_init() {
     // get ucp worker address
+    size_t addr_len, addr_lens[m_nranks];
+    ucp_address_t* addr;
     ucs_status_t status = ucp_worker_get_address(m_worker, &addr, &addr_len);
     MEGRAY_ASSERT(status == UCS_OK, "failed to get ucp worker address");
-    // copy bytes to a string
-    std::string uid((char*)addr, addr_len);
-    ucp_worker_release_address(m_worker, addr);
-    return uid;
-}
 
-Status UcxCommunicator::init(const std::vector<std::string>& uids) {
-    MEGRAY_ASSERT(uids.size() == m_nranks, "incorrect size of uids");
-    m_eps.resize(m_nranks);
+    // allgather addr_len
+    MEGRAY_CHECK(m_client->allgather(&addr_len, addr_lens, sizeof(size_t)));
+
+    // find max addr_len
+    size_t max_len = 0;
+    for (size_t i = 0; i < m_nranks; i++) {
+        if (addr_lens[i] > max_len) {
+            max_len = addr_lens[i];
+        }
+    }
+
+    // allgather addr
+    char addrs[max_len * m_nranks];
+    MEGRAY_CHECK(m_client->allgather(addr, addrs, max_len));
+    ucp_worker_release_address(m_worker, addr);
 
     // set endpoint params
     ucp_ep_params_t ep_params;
     ep_params.field_mask = UCP_EP_PARAM_FIELD_REMOTE_ADDRESS;
-    ucs_status_t status;
 
+    // create ucp endpoint
+    m_eps.resize(m_nranks);
     for (size_t i = 0; i < m_nranks; i++) {
         if (i == m_rank) continue;
-        // set endpoint address
-        ep_params.address = reinterpret_cast<const ucp_address_t*>(uids[i].data());
-        // create ucp endpoint
+        ep_params.address = reinterpret_cast<const ucp_address_t*>(addrs + i * max_len);
         status = ucp_ep_create(m_worker, &ep_params, &m_eps[i]);
         MEGRAY_ASSERT(status == UCS_OK, "failed to create ucp endpoint");
     }

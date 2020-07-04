@@ -11,6 +11,8 @@
 
 #pragma once
 
+#include <errno.h>
+
 #include "cuda_runtime.h"
 
 #include "debug.h"
@@ -19,12 +21,15 @@ namespace MegRay {
 
 typedef enum {
     MEGRAY_OK = 0,
-    MEGRAY_CUDA_ERR = 1,
-    MEGRAY_NCCL_ERR = 2,
-    MEGRAY_UCX_ERR = 3,
-    MEGRAY_ENV_ERROR = 4,
-    MEGRAY_INVALID_ARGUMENT = 5,
-    MEGRAY_NOT_IMPLEMENTED = 6
+    MEGRAY_SYS_ERROR = 1,
+    MEGRAY_CUDA_ERR = 2,
+    MEGRAY_NCCL_ERR = 3,
+    MEGRAY_UCX_ERR = 4,
+    MEGRAY_ENV_ERROR = 5,
+    MEGRAY_INVALID_ARGUMENT = 6,
+    MEGRAY_INVALID_USAGE = 7,
+    MEGRAY_UNEXPECTED_ERR = 8,
+    MEGRAY_NOT_IMPLEMENTED = 9
 } Status;
 
 #define MEGRAY_CHECK(expr)                              \
@@ -34,6 +39,38 @@ typedef enum {
             MEGRAY_ERROR("error [%d]", status);         \
             return status;                              \
         }                                               \
+    } while (0)
+
+#define SYS_CHECK_RET(expr, errval, retval)             \
+    do {                                                \
+        retval = (expr);                                \
+        if (retval == errval) {                         \
+            MEGRAY_ERROR("system error [%d]: %s",       \
+                errno, strerror(errno));                \
+            return MEGRAY_SYS_ERROR;                    \
+        }                                               \
+    } while (0)
+
+#define SYS_CHECK(expr, errval)                         \
+    do {                                                \
+        int retval;                                     \
+        SYS_CHECK_RET(expr, errval, retval);            \
+    } while (0)
+
+#define SYS_ASSERT_RET(expr, errval, retval)            \
+    do {                                                \
+        retval = (expr);                                \
+        if (retval == errval) {                         \
+            MEGRAY_ERROR("system error [%d]: %s",       \
+                errno, strerror(errno));                \
+            MEGRAY_THROW("system error");               \
+        }                                               \
+    } while (0)
+
+#define SYS_ASSERT(expr, errval)                        \
+    do {                                                \
+        int retval;                                     \
+        SYS_ASSERT_RET(expr, errval, retval);           \
     } while (0)
 
 #define CUDA_CHECK(expr)                                \
@@ -58,7 +95,7 @@ typedef enum {
 
 typedef enum {
     MEGRAY_NCCL = 0,
-    MEGRAY_UCX = 1,
+    MEGRAY_UCX = 1
 } Backend;
 
 typedef enum {

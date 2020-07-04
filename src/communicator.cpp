@@ -15,6 +15,12 @@
 
 namespace MegRay {
 
+Status Communicator::init(const char* master_ip, int port) {
+    m_client = std::make_shared<Client>(m_nranks, m_rank);
+    MEGRAY_CHECK(m_client->connect(master_ip, port));
+    return do_init();
+}
+
 std::shared_ptr<Communicator> get_communicator(uint32_t nranks, uint32_t rank, Backend backend) {
     std::shared_ptr<Communicator> comm;
     switch (backend) {
