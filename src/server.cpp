@@ -42,7 +42,7 @@ char* get_host_ip() {
                 struct sockaddr_in* sin = (struct sockaddr_in*)p->ifa_addr;
                 const char* host_ip = inet_ntoa(sin->sin_addr);
                 MEGRAY_INFO("using net device %s (%s)", name, host_ip);
-                char* ret = new char(strlen(host_ip) + 1);
+                char* ret = new char[strlen(host_ip) + 1];
                 strcpy(ret, host_ip);
                 freeifaddrs(ifa);
                 return ret;
