@@ -13,9 +13,9 @@
 
 #include <errno.h>
 
-#include "cuda_runtime.h"
+#include "megray/core/debug.h"
 
-#include "debug.h"
+#include "megray/config.h"
 
 namespace MegRay {
 
@@ -29,7 +29,8 @@ typedef enum {
     MEGRAY_INVALID_ARGUMENT = 6,
     MEGRAY_INVALID_USAGE = 7,
     MEGRAY_UNEXPECTED_ERR = 8,
-    MEGRAY_NOT_IMPLEMENTED = 9
+    MEGRAY_NOT_IMPLEMENTED = 9,
+    MEGRAY_STATUS_COUNT = 10,
 } Status;
 
 #define MEGRAY_CHECK(expr)                              \
@@ -95,7 +96,8 @@ typedef enum {
 
 typedef enum {
     MEGRAY_NCCL = 0,
-    MEGRAY_UCX = 1
+    MEGRAY_UCX = 1,
+    MEGRAY_BACKEND_COUNT = 2,
 } Backend;
 
 typedef enum {
@@ -107,7 +109,8 @@ typedef enum {
     MEGRAY_UINT64 = 5,
     MEGRAY_FLOAT16 = 6,
     MEGRAY_FLOAT32 = 7,
-    MEGRAY_FLOAT64 = 8
+    MEGRAY_FLOAT64 = 8,
+    MEGRAY_DTYPE_COUNT = 9,
 } DType;
 
 size_t get_dtype_size(DType dtype);
@@ -115,7 +118,8 @@ size_t get_dtype_size(DType dtype);
 typedef enum {
     MEGRAY_SUM = 0,
     MEGRAY_MAX = 1,
-    MEGRAY_MIN = 2
+    MEGRAY_MIN = 2,
+    MEGRAY_REDUCEOP_COUNT = 3,
 } ReduceOp;
 
 } // namespace MegRay

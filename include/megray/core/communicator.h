@@ -15,9 +15,9 @@
 #include <string>
 #include <vector>
 
-#include "common.h"
-#include "context.h"
-#include "client.h"
+#include "megray/core/common.h"
+#include "megray/core/context.h"
+#include "megray/core/client.h"
 
 namespace MegRay {
 
@@ -93,11 +93,5 @@ class Communicator {
         uint32_t m_rank;
         std::shared_ptr<Client> m_client;
 };
-
-/*!
- * get a communicator implemented with nccl or ucx
- * return std::shared_ptr<NcclCommunicator> or std::shared_ptr<UcxCommunicator>
- */
-std::shared_ptr<Communicator> get_communicator(uint32_t nranks, uint32_t rank, Backend backend);
 
 } // namespace MegRay

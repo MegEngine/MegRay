@@ -9,7 +9,7 @@
  * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
 
-#include "server.h"
+#include "megray/core/server.h"
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>

@@ -1,5 +1,5 @@
 /**
- * \file src/debug.cpp
+ * \file src/megray.h
  * MegRay is Licensed under the Apache License, Version 2.0 (the "License")
  *
  * Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
@@ -9,19 +9,17 @@
  * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
 
-#include "debug.h"
+#pragma once
 
-#include <cstdarg>
+#include "megray/core/server.h"
+#include "megray/core/communicator.h"
 
-namespace MegRay {
+namespace MegRay{
 
-void MEGRAY_LOG(const char* level, const char* file, int line, const char* fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    fprintf(stderr, "[%s]\t%s:%d, ", level, file, line);
-    vfprintf(stderr, fmt, ap);
-    fprintf(stderr, "\n");
-    va_end(ap);
+/*!
+ * get a communicator implemented with nccl or ucx
+ * return std::shared_ptr<NcclCommunicator> or std::shared_ptr<UcxCommunicator>
+ */
+std::shared_ptr<Communicator> get_communicator(uint32_t nranks, uint32_t rank, Backend backend);
+
 }
-
-} // namespace MegRay

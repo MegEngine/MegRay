@@ -15,7 +15,7 @@
 
 #include "nccl.h"
 
-#include "../common.h"
+#include "megray/core/common.h"
 
 namespace MegRay {
 

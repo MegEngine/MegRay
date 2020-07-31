@@ -9,7 +9,7 @@
  * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
 
-#include "communicator.h"
+#include "megray/ucx/communicator.h"
 
 namespace MegRay {
 
@@ -57,7 +57,7 @@ void reduce_helper(T* i0, T* i1, T* o, size_t len, ReduceOp op,
     }
 }
 
-void UcxCommunicator::_reduce(void* i0, void* i1, void* o, size_t len,
+void reduce(void* i0, void* i1, void* o, size_t len,
         DType dtype, ReduceOp op, cudaStream_t stream) {
     switch (dtype) {
         case MEGRAY_INT8:

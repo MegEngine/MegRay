@@ -16,7 +16,7 @@
 
 #include <ucp/api/ucp.h>
 
-#include "../communicator.h"
+#include "megray/core/communicator.h"
 
 namespace MegRay {
 
@@ -71,10 +71,6 @@ class UcxCommunicator : public Communicator {
 
         // flush _send and _recv requests
         Status _flush();
-
-        // launch cuda kernel for reduce operations
-        void _reduce(void* i0, void* i1, void* o, size_t len, DType dtype,
-                ReduceOp op, cudaStream_t stream);
 
         ucp_context_h m_context;
         ucp_worker_h m_worker;

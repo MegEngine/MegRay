@@ -9,9 +9,11 @@
  * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
 
-#include "communicator.h"
+#include "megray/ucx/communicator.h"
 
-#include "utils.h"
+#include "megray/ucx/utils.h"
+
+#include "megray/cuda/cuda_context.h"
 
 namespace MegRay {
 
@@ -64,7 +66,7 @@ Status UcxCommunicator::reduce(const void* sendbuff, void* recvbuff, size_t len,
                 if (virtual_src < m_nranks){ // valid src
                     MEGRAY_CHECK(_recv(lbuffer, len * size, actual_src));
                     MEGRAY_CHECK(_flush());
-                    _reduce(lbuffer, rbuffer, rbuffer, len, dtype, op, stream);
+                    MegRay::reduce(lbuffer, rbuffer, rbuffer, len, dtype, op, stream);
                     CUDA_CHECK(cudaStreamSynchronize(stream));
                 }
             }

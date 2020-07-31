@@ -14,8 +14,8 @@
 
 #include <gtest/gtest.h>
 
-#include "../src/server.h"
-#include "../src/client.h"
+#include "megray/core/server.h"
+#include "megray/core/client.h"
 
 TEST(TestServerClient, GetHostIP) {
     char* ip = MegRay::get_host_ip();

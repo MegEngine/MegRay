@@ -10,7 +10,7 @@
  */
 
 #include <gtest/gtest.h>
-#include "../src/megray.h"
+#include "megray/megray.h"
 
 int main(int argc, char* argv[]) {
     ::testing::InitGoogleTest(&argc, argv);

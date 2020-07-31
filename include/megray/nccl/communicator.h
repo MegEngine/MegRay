@@ -12,12 +12,13 @@
 #pragma once
 
 #include <string>
+#include <memory>
 
-#include "nccl.h"
-
-#include "../communicator.h"
+#include "megray/core/communicator.h"
 
 namespace MegRay {
+
+class NcclCommunicatorPrivate;
 
 /*!
  * a wrapper of ncclComm_t with MegRay interface
@@ -62,8 +63,7 @@ class NcclCommunicator : public Communicator {
             DType dtype, ReduceOp op, uint32_t root, std::shared_ptr<Context> ctx) override;
 
     private:
-        ncclComm_t m_comm;
-        bool m_inited;
+        std::unique_ptr<NcclCommunicatorPrivate> m_nccl;
 };
 
 } // namespace MegRay

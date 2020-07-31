@@ -9,7 +9,7 @@
  * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
 
-#include "common.h"
+#include "megray/core/common.h"
 
 #include <cstdint>
 

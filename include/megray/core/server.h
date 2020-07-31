@@ -13,7 +13,7 @@
 
 #include <mutex>
 
-#include "common.h"
+#include "megray/core/common.h"
 
 namespace MegRay {
 
