@@ -8,6 +8,10 @@
 #include "megray/ucx/communicator.h"
 #endif
 
+#ifdef MEGRAY_WITH_RCCL
+#include "megray/rccl/communicator.h"
+#endif
+
 namespace MegRay{
 
 std::shared_ptr<Communicator> get_communicator(uint32_t nranks, uint32_t rank, Backend backend) {
@@ -21,6 +25,11 @@ std::shared_ptr<Communicator> get_communicator(uint32_t nranks, uint32_t rank, B
         #ifdef MEGRAY_WITH_UCX
         case MEGRAY_UCX:
             comm = std::make_shared<UcxCommunicator>(nranks, rank);
+            break;
+        #endif
+        #ifdef MEGRAY_WITH_RCCL
+        case MEGRAY_RCCL:
+            comm = std::make_shared<RcclCommunicator>(nranks, rank);
             break;
         #endif
         default:

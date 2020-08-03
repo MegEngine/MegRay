@@ -30,7 +30,9 @@ typedef enum {
     MEGRAY_INVALID_USAGE = 7,
     MEGRAY_UNEXPECTED_ERR = 8,
     MEGRAY_NOT_IMPLEMENTED = 9,
-    MEGRAY_STATUS_COUNT = 10,
+    MEGRAY_HIP_ERR = 10,
+    MEGRAY_RCCL_ERR = 11,
+    MEGRAY_STATUS_COUNT = 12,
 } Status;
 
 #define MEGRAY_CHECK(expr)                              \
@@ -97,7 +99,8 @@ typedef enum {
 typedef enum {
     MEGRAY_NCCL = 0,
     MEGRAY_UCX = 1,
-    MEGRAY_BACKEND_COUNT = 2,
+    MEGRAY_RCCL = 2,
+    MEGRAY_BACKEND_COUNT = 3,
 } Backend;
 
 typedef enum {

@@ -79,6 +79,34 @@ TEST(TestUcxCommunicators, Init) {
 
 #endif  // MEGRAY_WITH_UCX
 
+#ifdef MEGRAY_WITH_RCCL
+
+TEST(TestRcclCommunicator, Init) {
+    auto type = MegRay::MEGRAY_RCCL;
+
+    const int nranks = 3;
+    const int port = MegRay::get_free_port();
+    auto ret = MegRay::create_server(nranks, port);
+    ASSERT_EQ(MegRay::MEGRAY_OK, ret);
+
+    auto run = [&](int rank) {
+        get_context_trait(get_preferred_context(type)).set_device(rank);
+        auto comm = MegRay::get_communicator(nranks, rank, type);
+        ASSERT_EQ(MegRay::MEGRAY_OK, comm->init("localhost", port));
+    };
+
+    std::vector<std::thread> threads;
+    for (size_t i = 0; i < nranks; i++) {
+        threads.push_back(std::thread(run, i));
+    }
+
+    for (size_t i = 0; i < nranks; i++) {
+        threads[i].join();
+    }
+}
+
+#endif  // MEGRAY_WITH_RCCL
+
 TEST(TestOpr, SendRecv) {
         std::string msg("test_message");
         const int nranks = 2;

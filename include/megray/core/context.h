@@ -21,6 +21,7 @@ namespace MegRay {
 typedef enum {
     MEGRAY_CTX_DEFAULT = 0,
     MEGRAY_CTX_CUDA = 1,
+    MEGRAY_CTX_HIP = 2,
     MEGRAY_CTX_COUNT = 3,
 } ContextType;
 

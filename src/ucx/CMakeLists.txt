@@ -1,7 +1,7 @@
 file(GLOB SRC_FILES "*.cpp")
 file(GLOB CUDA_SRC_FILES "*.cu")
 
-find_package(ucx)
+include(ucx)
 
 add_library(megray_ucx STATIC)
 set_target_properties(megray_ucx PROPERTIES CUDA_ARCHITECTURES "35;50;72")

@@ -1,6 +1,8 @@
 #pragma once
 
-#cmakedefine MEGRAY_WITH_UCX
 #cmakedefine MEGRAY_WITH_NCCL
+#cmakedefine MEGRAY_WITH_UCX
+#cmakedefine MEGRAY_WITH_RCCL
 #cmakedefine MEGRAY_WITH_TEST
 #cmakedefine MEGRAY_WITH_CUDA
+#cmakedefine MEGRAY_WITH_HIP

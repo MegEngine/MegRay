@@ -19,3 +19,8 @@ if(${MEGRAY_WITH_UCX})
     add_subdirectory(ucx)
     target_link_libraries(megray INTERFACE megray_ucx)
 endif()
+
+if(${MEGRAY_WITH_RCCL})
+    add_subdirectory(rccl)
+    target_link_libraries(megray INTERFACE megray_rccl)
+endif()

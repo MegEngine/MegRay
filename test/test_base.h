@@ -75,6 +75,9 @@ void run_test_for_all(int nranks, std::vector<std::vector<T>>& inputs,
 #ifdef MEGRAY_WITH_NCCL
             MegRay::MEGRAY_NCCL,
 #endif
+#ifdef MEGRAY_WITH_RCCL
+            MegRay::MEGRAY_RCCL,
+#endif
     };
     for (auto&& backend : backends) {
         run_test<T>(nranks, backend, inputs, expect_outputs, main_func);
