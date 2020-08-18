@@ -1,5 +1,5 @@
 /**
- * \file src/context.h
+ * \file include/megray/context.h
  * MegRay is Licensed under the Apache License, Version 2.0 (the "License")
  *
  * Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
@@ -11,10 +11,7 @@
 
 #pragma once
 
-#include <memory>
-#include <any>
-
-#include "megray/core/common.h"
+#include "megray/common.h"
 
 namespace MegRay {
 

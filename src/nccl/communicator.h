@@ -1,5 +1,5 @@
 /**
- * \file src/rccl/communicator.h
+ * \file src/nccl/communicator.h
  * MegRay is Licensed under the Apache License, Version 2.0 (the "License")
  *
  * Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
@@ -11,24 +11,23 @@
 
 #pragma once
 
-#include <string>
 #include <memory>
 
-#include "megray/core/communicator.h"
+#include "megray/communicator.h"
 
 namespace MegRay {
 
-class RcclCommunicatorPrivate;
+class NcclCommunicatorPrivate;
 
 /*!
- * a wrapper of rcclComm_t with MegRay interface
- * collective communications are performed synchronously
+ * a wrapper of ncclComm_t with MegRay interface
+ * collective communications are performed asynchronously
  */
-class RcclCommunicator : public Communicator {
+class NcclCommunicator : public Communicator {
     public:
-        RcclCommunicator(int nranks, int rank);
+        NcclCommunicator(int nranks, int rank);
 
-        ~RcclCommunicator();
+        ~NcclCommunicator();
 
         Status do_init() override;
 
@@ -63,7 +62,7 @@ class RcclCommunicator : public Communicator {
             DType dtype, ReduceOp op, uint32_t root, std::shared_ptr<Context> ctx) override;
 
     private:
-        std::unique_ptr<RcclCommunicatorPrivate> m_rccl;
+        std::unique_ptr<NcclCommunicatorPrivate> m_nccl;
 };
 
 } // namespace MegRay

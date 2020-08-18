@@ -1,5 +1,5 @@
 /**
- * \file src/nccl/communicator.cpp
+ * \file src/rccl/communicator.cpp
  * MegRay is Licensed under the Apache License, Version 2.0 (the "License")
  *
  * Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
@@ -9,14 +9,12 @@
  * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
 
-#include "megray/rccl/communicator.h"
+#include "communicator.h"
 
 #include "nccl.h"
 
-#include <string.h>
-
-#include "megray/rccl/utils.h"
-#include "megray/hip/hip_context.h"
+#include "utils.h"
+#include "megray/hip_context.h"
 
 #define CHECK_LAUNCH_MODE                                                  \
     do {                                                                   \

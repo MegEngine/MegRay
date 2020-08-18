@@ -9,14 +9,12 @@
  * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
 
-#include "megray/nccl/communicator.h"
+#include "communicator.h"
 
 #include "nccl.h"
 
-#include <string.h>
-
-#include "megray/nccl/utils.h"
-#include "megray/cuda/cuda_context.h"
+#include "utils.h"
+#include "megray/cuda_context.h"
 
 #define CHECK_LAUNCH_MODE                                                  \
     do {                                                                   \

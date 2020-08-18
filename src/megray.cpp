@@ -1,15 +1,26 @@
+/**
+ * \file src/megray.cpp
+ * MegRay is Licensed under the Apache License, Version 2.0 (the "License")
+ *
+ * Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ */
+
 #include "megray/megray.h"
 
 #ifdef MEGRAY_WITH_NCCL
-#include "megray/nccl/communicator.h"
+#include "nccl/communicator.h"
 #endif
 
 #ifdef MEGRAY_WITH_UCX
-#include "megray/ucx/communicator.h"
+#include "ucx/communicator.h"
 #endif
 
 #ifdef MEGRAY_WITH_RCCL
-#include "megray/rccl/communicator.h"
+#include "rccl/communicator.h"
 #endif
 
 namespace MegRay{

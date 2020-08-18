@@ -1,5 +1,5 @@
 /**
- * \file src/common.h
+ * \file include/megray/common.h
  * MegRay is Licensed under the Apache License, Version 2.0 (the "License")
  *
  * Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
@@ -13,7 +13,7 @@
 
 #include <errno.h>
 
-#include "megray/core/debug.h"
+#include "megray/debug.h"
 
 #include "megray/config.h"
 

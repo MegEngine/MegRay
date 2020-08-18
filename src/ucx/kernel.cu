@@ -9,7 +9,7 @@
  * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
 
-#include "megray/ucx/communicator.h"
+#include "communicator.h"
 
 namespace MegRay {
 

@@ -1,5 +1,5 @@
 /**
- * \file src/nccl/utils.cpp
+ * \file src/rccl/utils.cpp
  * MegRay is Licensed under the Apache License, Version 2.0 (the "License")
  *
  * Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
@@ -9,8 +9,8 @@
  * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
 
-#include "megray/rccl/utils.h"
-#include "megray/hip/hip_context.h"
+#include "utils.h"
+#include "megray/hip_context.h"
 
 namespace MegRay {
 

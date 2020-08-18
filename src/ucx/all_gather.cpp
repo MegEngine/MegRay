@@ -9,11 +9,11 @@
  * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
 
-#include "megray/ucx/communicator.h"
+#include "communicator.h"
 
-#include "megray/ucx/utils.h"
+#include "utils.h"
 
-#include "megray/cuda/cuda_context.h"
+#include "megray/cuda_context.h"
 
 namespace MegRay {
 

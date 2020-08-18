@@ -1,5 +1,5 @@
 /**
- * \file src/communicator.h
+ * \file include/megray/communicator.h
  * MegRay is Licensed under the Apache License, Version 2.0 (the "License")
  *
  * Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
@@ -15,9 +15,9 @@
 #include <string>
 #include <vector>
 
-#include "megray/core/common.h"
-#include "megray/core/context.h"
-#include "megray/core/client.h"
+#include "megray/common.h"
+#include "megray/context.h"
+#include "megray/client.h"
 
 namespace MegRay {
 
