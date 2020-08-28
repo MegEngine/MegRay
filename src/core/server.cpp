@@ -210,6 +210,9 @@ void serve_broadcast(uint32_t nranks, int* conns) {
         MEGRAY_ASSERT(len == len0, "inconsistent len from rank %d", rank);
     }
 
+    root = root0;
+    len = len0;
+
     // recv data from root
     void* data = malloc(len);
     SYS_ASSERT(recv(conns[root], data, len, MSG_WAITALL), -1);
