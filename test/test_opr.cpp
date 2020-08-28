@@ -108,40 +108,41 @@ TEST(TestRcclCommunicator, Init) {
 #endif  // MEGRAY_WITH_RCCL
 
 TEST(TestOpr, SendRecv) {
-        std::string msg("test_message");
-        const int nranks = 2;
-        const size_t len = msg.size();
+    std::string msg("test_message");
+    const int nranks = 2;
+    const size_t len = msg.size();
 
-        std::vector<std::vector<char>> inputs(nranks);
-        std::vector<std::vector<char>> expected_outputs(nranks);
+    std::vector<std::vector<char>> inputs(nranks);
+    std::vector<std::vector<char>> expected_outputs(nranks);
 
-        for (size_t i = 0; i < len; i++) {
-            inputs[0].push_back(msg[i]);
-            expected_outputs[1].push_back(msg[i]);
+    for (size_t i = 0; i < len; i++) {
+        inputs[0].push_back(msg[i]);
+        expected_outputs[1].push_back(msg[i]);
+    }
+
+    auto run = [len](std::shared_ptr<MegRay::Communicator> comm,
+                     MegRay::ContextTrait trait, int port, int rank,
+                     std::vector<char>& input,
+                     std::vector<char>& output) -> void {
+        trait.set_device(rank);
+        comm->init("localhost", port);
+
+        auto context = trait.make_context();
+
+        void* ptr = trait.alloc(len);
+
+        if (rank == 0) {  // send
+            trait.memcpy_h2d(ptr, input.data(), len);
+            comm->send(ptr, len, 1, context);
+            trait.sync_context(context);
+        } else {  // recv
+            comm->recv(ptr, len, 0, context);
+            trait.sync_context(context);
+            trait.memcpy_d2h(output.data(), ptr, len);
         }
+    };
 
-        auto run = [len](std::shared_ptr<MegRay::Communicator> comm, MegRay::ContextTrait trait, int port,
-                         int rank, std::vector<char>& input,
-                         std::vector<char>& output) -> void {
-            trait.set_device(rank);
-            comm->init("localhost", port);
-
-            auto context = trait.make_context();
-
-            void* ptr = trait.alloc(len);
-
-            if (rank == 0) {  // send
-                trait.memcpy_h2d(ptr, input.data(), len);
-                comm->send(ptr, len, 1, context);
-                trait.sync_context(context);
-            } else {  // recv
-                comm->recv(ptr, len, 0, context);
-                trait.sync_context(context);
-                trait.memcpy_d2h(output.data(), ptr, len);
-            }
-        };
-
-        run_test_for_all<char>(nranks, inputs, expected_outputs, run);
+    run_test_for_all<char>(nranks, inputs, expected_outputs, run);
 }
 
 TEST(TestOpr, Scatter) {
@@ -160,8 +161,9 @@ TEST(TestOpr, Scatter) {
     }
 
     auto run = [nranks, recvlen, root](
-                       std::shared_ptr<MegRay::Communicator> comm, MegRay::ContextTrait trait, int port,
-                       int rank, std::vector<float>& input,
+                       std::shared_ptr<MegRay::Communicator> comm,
+                       MegRay::ContextTrait trait, int port, int rank,
+                       std::vector<float>& input,
                        std::vector<float>& output) -> void {
         trait.set_device(rank);
         comm->init("localhost", port);
@@ -173,7 +175,8 @@ TEST(TestOpr, Scatter) {
 
         if (rank == root) {
             in_ptr = trait.alloc(nranks * recvlen * sizeof(float));
-            trait.memcpy_h2d(in_ptr, input.data(), nranks * recvlen * sizeof(float));
+            trait.memcpy_h2d(in_ptr, input.data(),
+                             nranks * recvlen * sizeof(float));
         } else {
             in_ptr = nullptr;
         }
@@ -204,8 +207,9 @@ TEST(TestOpr, Gather) {
     }
 
     auto run = [nranks, sendlen, root](
-                       std::shared_ptr<MegRay::Communicator> comm, MegRay::ContextTrait trait, int port,
-                       int rank, std::vector<float>& input,
+                       std::shared_ptr<MegRay::Communicator> comm,
+                       MegRay::ContextTrait trait, int port, int rank,
+                       std::vector<float>& input,
                        std::vector<float>& output) -> void {
         trait.set_device(rank);
         comm->init("localhost", port);
@@ -229,7 +233,8 @@ TEST(TestOpr, Gather) {
         trait.sync_context(context);
 
         if (rank == root) {
-            trait.memcpy_d2h(output.data(), out_ptr, nranks * sendlen * sizeof(float));
+            trait.memcpy_d2h(output.data(), out_ptr,
+                             nranks * sendlen * sizeof(float));
         }
     };
     run_test_for_all<float>(nranks, inputs, outputs, run);
@@ -253,8 +258,9 @@ TEST(TestOpr, AllToAll) {
         }
     }
 
-    auto run = [nranks, len](std::shared_ptr<MegRay::Communicator> comm, MegRay::ContextTrait trait,
-                             int port, int rank, std::vector<float>& input,
+    auto run = [nranks, len](std::shared_ptr<MegRay::Communicator> comm,
+                             MegRay::ContextTrait trait, int port, int rank,
+                             std::vector<float>& input,
                              std::vector<float>& output) -> void {
         trait.set_device(rank);
         comm->init("localhost", port);
@@ -293,8 +299,9 @@ TEST(TestOpr, AllGather) {
         }
     }
 
-    auto run = [nranks, sendlen](std::shared_ptr<MegRay::Communicator> comm, MegRay::ContextTrait trait,
-                                 int port, int rank, std::vector<float>& input,
+    auto run = [nranks, sendlen](std::shared_ptr<MegRay::Communicator> comm,
+                                 MegRay::ContextTrait trait, int port, int rank,
+                                 std::vector<float>& input,
                                  std::vector<float>& output) -> void {
         trait.set_device(rank);
         comm->init("localhost", port);
@@ -312,7 +319,8 @@ TEST(TestOpr, AllGather) {
         ASSERT_EQ(ret, 0);
 
         trait.sync_context(context);
-        trait.memcpy_d2h(output.data(), out_ptr, nranks * sendlen * sizeof(float));
+        trait.memcpy_d2h(output.data(), out_ptr,
+                         nranks * sendlen * sizeof(float));
     };
     run_test_for_all<float>(nranks, inputs, outputs, run);
 }
@@ -325,9 +333,9 @@ TEST(TestOpr, AllReduce) {
                                                      std::vector<float>(len));
 
     auto reduce_func = [nranks, len](MegRay::ReduceOp op) {
-        auto run = [nranks, len, op](std::shared_ptr<MegRay::Communicator> comm, MegRay::ContextTrait trait,
-                                     int port, int rank,
-                                     std::vector<float>& input,
+        auto run = [nranks, len, op](std::shared_ptr<MegRay::Communicator> comm,
+                                     MegRay::ContextTrait trait, int port,
+                                     int rank, std::vector<float>& input,
                                      std::vector<float>& output) {
             trait.set_device(rank);
             comm->init("localhost", port);
@@ -399,10 +407,10 @@ TEST(TestOpr, ReduceScatterSum) {
     std::vector<std::vector<float>> expected_outputs(
             nranks, std::vector<float>(recvlen));
     auto reduce_func = [nranks, recvlen](MegRay::ReduceOp op) {
-        auto run = [nranks, recvlen, op](
-                           std::shared_ptr<MegRay::Communicator> comm, MegRay::ContextTrait trait, int port,
-                           int rank, std::vector<float>& input,
-                           std::vector<float>& output) {
+        auto run = [nranks, recvlen,
+                    op](std::shared_ptr<MegRay::Communicator> comm,
+                        MegRay::ContextTrait trait, int port, int rank,
+                        std::vector<float>& input, std::vector<float>& output) {
             trait.set_device(rank);
             comm->init("localhost", port);
 
@@ -412,7 +420,8 @@ TEST(TestOpr, ReduceScatterSum) {
             in_ptr = trait.alloc(nranks * recvlen * sizeof(float));
             out_ptr = trait.alloc(recvlen * sizeof(float));
 
-            trait.memcpy_h2d(in_ptr, input.data(), nranks * recvlen * sizeof(float));
+            trait.memcpy_h2d(in_ptr, input.data(),
+                             nranks * recvlen * sizeof(float));
 
             int ret = comm->reduce_scatter(in_ptr, out_ptr, recvlen,
                                            MegRay::MEGRAY_FLOAT32, op, context);
@@ -483,9 +492,9 @@ TEST(TestOpr, Broadcast) {
         }
     }
 
-    auto run = [nranks, root, len](std::shared_ptr<MegRay::Communicator> comm, MegRay::ContextTrait trait,
-                                   int port, int rank,
-                                   std::vector<float>& input,
+    auto run = [nranks, root, len](std::shared_ptr<MegRay::Communicator> comm,
+                                   MegRay::ContextTrait trait, int port,
+                                   int rank, std::vector<float>& input,
                                    std::vector<float>& output) {
         trait.set_device(rank);
         comm->init("localhost", port);
@@ -519,10 +528,10 @@ TEST(TestOpr, ReduceSum) {
     expected_outputs[root].resize(len);
 
     auto reduce_func = [nranks, root, len](MegRay::ReduceOp op) {
-        auto run = [nranks, root, len, op](
-                           std::shared_ptr<MegRay::Communicator> comm, MegRay::ContextTrait trait, int port,
-                           int rank, std::vector<float>& input,
-                           std::vector<float>& output) {
+        auto run = [nranks, root, len,
+                    op](std::shared_ptr<MegRay::Communicator> comm,
+                        MegRay::ContextTrait trait, int port, int rank,
+                        std::vector<float>& input, std::vector<float>& output) {
             trait.set_device(rank);
             comm->init("localhost", port);
 

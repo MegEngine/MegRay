@@ -6,7 +6,8 @@
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied.
  */
 
 #include "megray/megray.h"
@@ -23,30 +24,31 @@
 #include "rccl/communicator.h"
 #endif
 
-namespace MegRay{
+namespace MegRay {
 
-std::shared_ptr<Communicator> get_communicator(uint32_t nranks, uint32_t rank, Backend backend) {
+std::shared_ptr<Communicator> get_communicator(uint32_t nranks, uint32_t rank,
+                                               Backend backend) {
     std::shared_ptr<Communicator> comm;
     switch (backend) {
-        #ifdef MEGRAY_WITH_NCCL
+#ifdef MEGRAY_WITH_NCCL
         case MEGRAY_NCCL:
             comm = std::make_shared<NcclCommunicator>(nranks, rank);
             break;
-        #endif
-        #ifdef MEGRAY_WITH_UCX
+#endif
+#ifdef MEGRAY_WITH_UCX
         case MEGRAY_UCX:
             comm = std::make_shared<UcxCommunicator>(nranks, rank);
             break;
-        #endif
-        #ifdef MEGRAY_WITH_RCCL
+#endif
+#ifdef MEGRAY_WITH_RCCL
         case MEGRAY_RCCL:
             comm = std::make_shared<RcclCommunicator>(nranks, rank);
             break;
-        #endif
+#endif
         default:
             MEGRAY_THROW("unknown backend");
     }
     return comm;
 }
 
-}
+}  // namespace MegRay

@@ -6,7 +6,8 @@
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied.
  */
 
 #include "communicator.h"
@@ -36,12 +37,13 @@ static void send_cb(void* request, ucs_status_t status) {
 }
 
 // receive callback, set flag "completed" to 1
-static void recv_cb(void* request, ucs_status_t status, ucp_tag_recv_info_t* info) {
+static void recv_cb(void* request, ucs_status_t status,
+                    ucp_tag_recv_info_t* info) {
     ((Request*)request)->completed = 1;
 }
 
-UcxCommunicator::UcxCommunicator(int nranks, int rank) :
-    Communicator(nranks, rank), m_inited(false) {
+UcxCommunicator::UcxCommunicator(int nranks, int rank)
+        : Communicator(nranks, rank), m_inited(false) {
     const char* env = "UCX_MEMTYPE_CACHE=n";
     putenv((char*)env);
 
@@ -51,7 +53,8 @@ UcxCommunicator::UcxCommunicator(int nranks, int rank) :
     ucp_params.field_mask = UCP_PARAM_FIELD_FEATURES |
                             UCP_PARAM_FIELD_REQUEST_SIZE |
                             UCP_PARAM_FIELD_REQUEST_INIT;
-    ucp_params.features = UCP_FEATURE_TAG | UCP_FEATURE_RMA | UCP_FEATURE_WAKEUP;
+    ucp_params.features =
+            UCP_FEATURE_TAG | UCP_FEATURE_RMA | UCP_FEATURE_WAKEUP;
     ucp_params.request_size = sizeof(Request);
     ucp_params.request_init = request_init;
 
@@ -107,8 +110,10 @@ Status UcxCommunicator::do_init() {
     // create ucp endpoint
     m_eps.resize(m_nranks);
     for (size_t i = 0; i < m_nranks; i++) {
-        if (i == m_rank) continue;
-        ep_params.address = reinterpret_cast<const ucp_address_t*>(addrs + i * max_len);
+        if (i == m_rank)
+            continue;
+        ep_params.address =
+                reinterpret_cast<const ucp_address_t*>(addrs + i * max_len);
         status = ucp_ep_create(m_worker, &ep_params, &m_eps[i]);
         MEGRAY_ASSERT(status == UCS_OK, "failed to create ucp endpoint");
     }
@@ -117,9 +122,10 @@ Status UcxCommunicator::do_init() {
 }
 
 Status UcxCommunicator::send(const void* sendbuff, size_t len, uint32_t rank,
-        std::shared_ptr<Context> ctx) {
+                             std::shared_ptr<Context> ctx) {
     // cuda stream synchronize
-    MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_CUDA, "only cuda context supported");
+    MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_CUDA,
+                  "only cuda context supported");
     cudaStream_t stream = static_cast<CudaContext*>(ctx.get())->get_stream();
     CUDA_CHECK(cudaStreamSynchronize(stream));
     // perform send recv
@@ -131,9 +137,10 @@ Status UcxCommunicator::send(const void* sendbuff, size_t len, uint32_t rank,
 }
 
 Status UcxCommunicator::recv(void* recvbuff, size_t len, uint32_t rank,
-        std::shared_ptr<Context> ctx) {
+                             std::shared_ptr<Context> ctx) {
     // cuda stream synchronize
-    MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_CUDA, "only cuda context supported");
+    MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_CUDA,
+                  "only cuda context supported");
     cudaStream_t stream = static_cast<CudaContext*>(ctx.get())->get_stream();
     CUDA_CHECK(cudaStreamSynchronize(stream));
     // perform send recv
@@ -149,7 +156,7 @@ Status UcxCommunicator::_send(const void* sendbuff, size_t len, uint32_t rank) {
     std::lock_guard<std::mutex> lock(m_requests_mtx);
     // submit non-blocking send request to ucp
     void* ptr = ucp_tag_send_nb(m_eps[rank], sendbuff, len,
-            ucp_dt_make_contig(1), m_rank, send_cb);
+                                ucp_dt_make_contig(1), m_rank, send_cb);
     if (UCS_PTR_IS_PTR(ptr)) {
         m_requests.push_back(ptr);  // send request is pending
     } else if (UCS_PTR_STATUS(ptr) != UCS_OK) {
@@ -163,8 +170,8 @@ Status UcxCommunicator::_recv(void* recvbuff, size_t len, uint32_t rank) {
     std::lock_guard<std::mutex> lock(m_requests_mtx);
     // submit non-blocking receive request to ucp
     // mask 0xffffffff means matching every bit of uint32
-    void* ptr = ucp_tag_recv_nb(m_worker, recvbuff, len,
-            ucp_dt_make_contig(1), rank, 0xffffffff, recv_cb);
+    void* ptr = ucp_tag_recv_nb(m_worker, recvbuff, len, ucp_dt_make_contig(1),
+                                rank, 0xffffffff, recv_cb);
     if (UCS_PTR_IS_PTR(ptr)) {
         m_requests.push_back(ptr);
     } else if (UCS_PTR_STATUS(ptr) != UCS_OK) {  // receive request is pending
@@ -181,7 +188,7 @@ Status UcxCommunicator::_flush() {
         while (req->completed == 0) {
             ucp_worker_progress(m_worker);
         }
-	// release request handler
+        // release request handler
         req->completed = 0;
         ucp_request_release(req);
     }
@@ -189,4 +196,4 @@ Status UcxCommunicator::_flush() {
     return MEGRAY_OK;
 }
 
-} // namespace MegRay
+}  // namespace MegRay

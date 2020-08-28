@@ -6,7 +6,8 @@
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied.
  */
 
 #include "megray/debug.h"
@@ -15,7 +16,8 @@
 
 namespace MegRay {
 
-void MEGRAY_LOG(const char* level, const char* file, int line, const char* fmt, ...) {
+void MEGRAY_LOG(const char* level, const char* file, int line, const char* fmt,
+                ...) {
     va_list ap;
     va_start(ap, fmt);
     fprintf(stderr, "[%s]\t%s:%d, ", level, file, line);
@@ -24,4 +26,4 @@ void MEGRAY_LOG(const char* level, const char* file, int line, const char* fmt, 
     va_end(ap);
 }
 
-} // namespace MegRay
+}  // namespace MegRay

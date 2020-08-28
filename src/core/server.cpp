@@ -6,7 +6,8 @@
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied.
  */
 
 #include "megray/server.h"
@@ -31,14 +32,14 @@ char* get_host_ip() {
         MEGRAY_THROW("invalid argument");
     }
 
-    struct ifaddrs *ifa;
+    struct ifaddrs* ifa;
     SYS_ASSERT(getifaddrs(&ifa), -1);
 
     for (struct ifaddrs* p = ifa; p != NULL; p = p->ifa_next) {
         if (p->ifa_addr and p->ifa_addr->sa_family == AF_INET and p->ifa_name) {
             const char* name = p->ifa_name;
             if (strcmp(name, "lo") != 0 and
-                    (device == NULL or strcmp(name, device) == 0)) {
+                (device == NULL or strcmp(name, device) == 0)) {
                 struct sockaddr_in* sin = (struct sockaddr_in*)p->ifa_addr;
                 const char* host_ip = inet_ntoa(sin->sin_addr);
                 MEGRAY_INFO("using net device %s (%s)", name, host_ip);
@@ -101,7 +102,8 @@ void server_thread(int listenfd, uint32_t nranks) {
     for (uint32_t i = 0; i < nranks; i++) {
         // establish connection
         int conn;
-        SYS_ASSERT_RET(accept(listenfd, (struct sockaddr*)NULL, NULL), -1, conn);
+        SYS_ASSERT_RET(accept(listenfd, (struct sockaddr*)NULL, NULL), -1,
+                       conn);
 
         // recv rank and save into conns
         uint32_t rank;
@@ -118,7 +120,8 @@ void server_thread(int listenfd, uint32_t nranks) {
     while (true) {
         // receive a request from rank 0
         uint32_t request_id;
-        SYS_ASSERT(recv(conns[0], &request_id, sizeof(uint32_t), MSG_WAITALL), -1);
+        SYS_ASSERT(recv(conns[0], &request_id, sizeof(uint32_t), MSG_WAITALL),
+                   -1);
 
         if (request_id == 1) {
             serve_barrier(nranks, conns);
@@ -147,8 +150,11 @@ Status create_server(uint32_t nranks, int port) {
 
     // bind and listen
     int opt = 1;
-    SYS_CHECK(setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(int)), -1);
-    SYS_CHECK(bind(listenfd, (struct sockaddr*)&server_addr, sizeof(server_addr)), -1);
+    SYS_CHECK(setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(int)),
+              -1);
+    SYS_CHECK(
+            bind(listenfd, (struct sockaddr*)&server_addr, sizeof(server_addr)),
+            -1);
     SYS_CHECK(listen(listenfd, nranks), -1);
 
     // start server thread
@@ -165,8 +171,11 @@ void serve_barrier(uint32_t nranks, int* conns) {
 
     // recv other requests
     for (uint32_t rank = 1; rank < nranks; rank++) {
-        SYS_ASSERT(recv(conns[rank], &request_id, sizeof(uint32_t), MSG_WAITALL), -1);
-        MEGRAY_ASSERT(request_id == 1, "inconsistent request_id from rank %d", rank);
+        SYS_ASSERT(
+                recv(conns[rank], &request_id, sizeof(uint32_t), MSG_WAITALL),
+                -1);
+        MEGRAY_ASSERT(request_id == 1, "inconsistent request_id from rank %d",
+                      rank);
     }
 
     // send ack
@@ -188,8 +197,11 @@ void serve_broadcast(uint32_t nranks, int* conns) {
 
     // recv other requests
     for (uint32_t rank = 1; rank < nranks; rank++) {
-        SYS_ASSERT(recv(conns[rank], &request_id, sizeof(uint32_t), MSG_WAITALL), -1);
-        MEGRAY_ASSERT(request_id == 2, "inconsistent request_id from rank %d", rank);
+        SYS_ASSERT(
+                recv(conns[rank], &request_id, sizeof(uint32_t), MSG_WAITALL),
+                -1);
+        MEGRAY_ASSERT(request_id == 2, "inconsistent request_id from rank %d",
+                      rank);
 
         SYS_ASSERT(recv(conns[rank], &root, sizeof(uint32_t), MSG_WAITALL), -1);
         MEGRAY_ASSERT(root == root0, "inconsistent root from rank %d", rank);
@@ -221,8 +233,11 @@ void serve_allgather(uint32_t nranks, int* conns) {
 
     // recv other requests
     for (uint32_t rank = 1; rank < nranks; rank++) {
-        SYS_ASSERT(recv(conns[rank], &request_id, sizeof(uint32_t), MSG_WAITALL), -1);
-        MEGRAY_ASSERT(request_id == 3, "inconsistent request_id from rank %d", rank);
+        SYS_ASSERT(
+                recv(conns[rank], &request_id, sizeof(uint32_t), MSG_WAITALL),
+                -1);
+        MEGRAY_ASSERT(request_id == 3, "inconsistent request_id from rank %d",
+                      rank);
 
         SYS_ASSERT(recv(conns[rank], &len, sizeof(uint64_t), MSG_WAITALL), -1);
         MEGRAY_ASSERT(len == len0, "inconsistent len from rank %d", rank);
@@ -243,4 +258,4 @@ void serve_allgather(uint32_t nranks, int* conns) {
     free(data);
 }
 
-} // namespace MegRay
+}  // namespace MegRay

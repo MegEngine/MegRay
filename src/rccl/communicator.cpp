@@ -6,15 +6,16 @@
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied.
  */
 
 #include "communicator.h"
 
 #include "nccl.h"
 
-#include "utils.h"
 #include "megray/hip_context.h"
+#include "utils.h"
 
 #define CHECK_LAUNCH_MODE                                                  \
     do {                                                                   \
@@ -27,19 +28,16 @@
 
 namespace MegRay {
 
-class RcclCommunicatorPrivate{
+class RcclCommunicatorPrivate {
 public:
     ncclComm_t m_comm;
-    ~RcclCommunicatorPrivate(){
-        ncclCommDestroy(m_comm);
-    }
+    ~RcclCommunicatorPrivate() { ncclCommDestroy(m_comm); }
 };
 
-RcclCommunicator::RcclCommunicator(int nranks, int rank):
-        Communicator(nranks, rank) {
-}
+RcclCommunicator::RcclCommunicator(int nranks, int rank)
+        : Communicator(nranks, rank) {}
 
-RcclCommunicator::~RcclCommunicator(){}
+RcclCommunicator::~RcclCommunicator() {}
 
 Status RcclCommunicator::do_init() {
     uint32_t root = 0;
@@ -54,7 +52,7 @@ Status RcclCommunicator::do_init() {
 }
 
 Status RcclCommunicator::send(const void* sendbuff, size_t len, uint32_t rank,
-        std::shared_ptr<Context> ctx) {
+                              std::shared_ptr<Context> ctx) {
     // check context type and get hip stream
     MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_HIP, "only hip context supported");
     hipStream_t stream = static_cast<HipContext*>(ctx.get())->get_stream();
@@ -65,7 +63,7 @@ Status RcclCommunicator::send(const void* sendbuff, size_t len, uint32_t rank,
 }
 
 Status RcclCommunicator::recv(void* recvbuff, size_t len, uint32_t rank,
-        std::shared_ptr<Context> ctx) {
+                              std::shared_ptr<Context> ctx) {
     // check context type and get hip stream
     MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_HIP, "only hip context supported");
     hipStream_t stream = static_cast<HipContext*>(ctx.get())->get_stream();
@@ -76,7 +74,8 @@ Status RcclCommunicator::recv(void* recvbuff, size_t len, uint32_t rank,
 }
 
 Status RcclCommunicator::scatter(const void* sendbuff, void* recvbuff,
-        size_t recvlen, DType dtype, uint32_t root, std::shared_ptr<Context> ctx) {
+                                 size_t recvlen, DType dtype, uint32_t root,
+                                 std::shared_ptr<Context> ctx) {
     // check context type and get hip stream
     MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_HIP, "only hip context supported");
     hipStream_t stream = static_cast<HipContext*>(ctx.get())->get_stream();
@@ -86,11 +85,14 @@ Status RcclCommunicator::scatter(const void* sendbuff, void* recvbuff,
     ncclGroupStart();
     if (m_rank == root) {
         for (size_t r = 0; r < m_nranks; r++) {
-            const char* p = (const char*)sendbuff + r * recvlen * get_dtype_size(dtype);
-            RCCL_CHECK(ncclSend((const void*)p, recvlen, nccl_dtype, r, m_rccl->m_comm, stream));
+            const char* p =
+                    (const char*)sendbuff + r * recvlen * get_dtype_size(dtype);
+            RCCL_CHECK(ncclSend((const void*)p, recvlen, nccl_dtype, r,
+                                m_rccl->m_comm, stream));
         }
     }
-    RCCL_CHECK(ncclRecv(recvbuff, recvlen, nccl_dtype, root, m_rccl->m_comm, stream));
+    RCCL_CHECK(ncclRecv(recvbuff, recvlen, nccl_dtype, root, m_rccl->m_comm,
+                        stream));
     ncclGroupEnd();
     // hip stream synchronize
     HIP_CHECK(hipStreamSynchronize(stream));
@@ -98,7 +100,8 @@ Status RcclCommunicator::scatter(const void* sendbuff, void* recvbuff,
 }
 
 Status RcclCommunicator::gather(const void* sendbuff, void* recvbuff,
-        size_t sendlen, DType dtype, uint32_t root, std::shared_ptr<Context> ctx) {
+                                size_t sendlen, DType dtype, uint32_t root,
+                                std::shared_ptr<Context> ctx) {
     // check context type and get hip stream
     MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_HIP, "only hip context supported");
     hipStream_t stream = static_cast<HipContext*>(ctx.get())->get_stream();
@@ -109,10 +112,12 @@ Status RcclCommunicator::gather(const void* sendbuff, void* recvbuff,
     if (m_rank == root) {
         for (size_t r = 0; r < m_nranks; r++) {
             char* p = (char*)recvbuff + r * sendlen * get_dtype_size(dtype);
-            RCCL_CHECK(ncclRecv((void*)p, sendlen, nccl_dtype, r, m_rccl->m_comm, stream));
+            RCCL_CHECK(ncclRecv((void*)p, sendlen, nccl_dtype, r,
+                                m_rccl->m_comm, stream));
         }
     }
-    RCCL_CHECK(ncclSend(sendbuff, sendlen, nccl_dtype, root, m_rccl->m_comm, stream));
+    RCCL_CHECK(ncclSend(sendbuff, sendlen, nccl_dtype, root, m_rccl->m_comm,
+                        stream));
     ncclGroupEnd();
     // hip stream synchronize
     HIP_CHECK(hipStreamSynchronize(stream));
@@ -120,7 +125,8 @@ Status RcclCommunicator::gather(const void* sendbuff, void* recvbuff,
 }
 
 Status RcclCommunicator::all_to_all(const void* sendbuff, void* recvbuff,
-        size_t len, DType dtype, std::shared_ptr<Context> ctx) {
+                                    size_t len, DType dtype,
+                                    std::shared_ptr<Context> ctx) {
     // check context type and get hip stream
     MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_HIP, "only hip context supported");
     hipStream_t stream = static_cast<HipContext*>(ctx.get())->get_stream();
@@ -131,8 +137,10 @@ Status RcclCommunicator::all_to_all(const void* sendbuff, void* recvbuff,
     for (size_t r = 0; r < m_nranks; r++) {
         const char* p = (const char*)sendbuff + r * len * get_dtype_size(dtype);
         char* q = (char*)recvbuff + r * len * get_dtype_size(dtype);
-        RCCL_CHECK(ncclSend((const void*)p, len, nccl_dtype, r, m_rccl->m_comm, stream));
-        RCCL_CHECK(ncclRecv((void*)q, len, nccl_dtype, r, m_rccl->m_comm, stream));
+        RCCL_CHECK(ncclSend((const void*)p, len, nccl_dtype, r, m_rccl->m_comm,
+                            stream));
+        RCCL_CHECK(
+                ncclRecv((void*)q, len, nccl_dtype, r, m_rccl->m_comm, stream));
     }
     ncclGroupEnd();
     // hip stream synchronize
@@ -140,64 +148,72 @@ Status RcclCommunicator::all_to_all(const void* sendbuff, void* recvbuff,
     return MEGRAY_OK;
 }
 
-Status RcclCommunicator::all_gather(const void* sendbuff, void* recvbuff, size_t sendlen,
-        DType dtype, std::shared_ptr<Context> ctx) {
+Status RcclCommunicator::all_gather(const void* sendbuff, void* recvbuff,
+                                    size_t sendlen, DType dtype,
+                                    std::shared_ptr<Context> ctx) {
     // check context type and get hip stream
     MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_HIP, "only hip context supported");
     hipStream_t stream = static_cast<HipContext*>(ctx.get())->get_stream();
     // perform all gather synchronously
     RCCL_CHECK(ncclAllGather(sendbuff, recvbuff, sendlen, get_nccl_dtype(dtype),
-            m_rccl->m_comm, stream));
+                             m_rccl->m_comm, stream));
     HIP_CHECK(hipStreamSynchronize(stream));
     return MEGRAY_OK;
 }
 
-Status RcclCommunicator::all_reduce(const void* sendbuff, void* recvbuff, size_t len,
-        DType dtype, ReduceOp op, std::shared_ptr<Context> ctx) {
+Status RcclCommunicator::all_reduce(const void* sendbuff, void* recvbuff,
+                                    size_t len, DType dtype, ReduceOp op,
+                                    std::shared_ptr<Context> ctx) {
     // check context type and get hip stream
     MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_HIP, "only hip context supported");
     hipStream_t stream = static_cast<HipContext*>(ctx.get())->get_stream();
     // perform all reduce synchronously
     RCCL_CHECK(ncclAllReduce(sendbuff, recvbuff, len, get_nccl_dtype(dtype),
-            get_nccl_reduce_op(op), m_rccl->m_comm, stream));
+                             get_nccl_reduce_op(op), m_rccl->m_comm, stream));
     HIP_CHECK(hipStreamSynchronize(stream));
     return MEGRAY_OK;
 }
 
-Status RcclCommunicator::reduce_scatter(const void* sendbuff, void* recvbuff, size_t recvlen,
-        DType dtype, ReduceOp op, std::shared_ptr<Context> ctx) {
+Status RcclCommunicator::reduce_scatter(const void* sendbuff, void* recvbuff,
+                                        size_t recvlen, DType dtype,
+                                        ReduceOp op,
+                                        std::shared_ptr<Context> ctx) {
     // check context type and get hip stream
     MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_HIP, "only hip context supported");
     hipStream_t stream = static_cast<HipContext*>(ctx.get())->get_stream();
     // perform reduce scatter synchronously
-    RCCL_CHECK(ncclReduceScatter(sendbuff, recvbuff, recvlen, get_nccl_dtype(dtype),
-            get_nccl_reduce_op(op), m_rccl->m_comm, stream));
+    RCCL_CHECK(ncclReduceScatter(sendbuff, recvbuff, recvlen,
+                                 get_nccl_dtype(dtype), get_nccl_reduce_op(op),
+                                 m_rccl->m_comm, stream));
     HIP_CHECK(hipStreamSynchronize(stream));
     return MEGRAY_OK;
 }
 
-Status RcclCommunicator::broadcast(const void* sendbuff, void* recvbuff, size_t len,
-        DType dtype, uint32_t root, std::shared_ptr<Context> ctx) {
+Status RcclCommunicator::broadcast(const void* sendbuff, void* recvbuff,
+                                   size_t len, DType dtype, uint32_t root,
+                                   std::shared_ptr<Context> ctx) {
     // check context type and get hip stream
     MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_HIP, "only hip context supported");
     hipStream_t stream = static_cast<HipContext*>(ctx.get())->get_stream();
     // perform broadcast synchronously
-    RCCL_CHECK(ncclBroadcast(sendbuff, recvbuff, len, get_nccl_dtype(dtype), root,
-            m_rccl->m_comm, stream));
+    RCCL_CHECK(ncclBroadcast(sendbuff, recvbuff, len, get_nccl_dtype(dtype),
+                             root, m_rccl->m_comm, stream));
     HIP_CHECK(hipStreamSynchronize(stream));
     return MEGRAY_OK;
 }
 
-Status RcclCommunicator::reduce(const void* sendbuff, void* recvbuff, size_t len,
-        DType dtype, ReduceOp op, uint32_t root, std::shared_ptr<Context> ctx) {
+Status RcclCommunicator::reduce(const void* sendbuff, void* recvbuff,
+                                size_t len, DType dtype, ReduceOp op,
+                                uint32_t root, std::shared_ptr<Context> ctx) {
     // check context type and get hip stream
     MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_HIP, "only hip context supported");
     hipStream_t stream = static_cast<HipContext*>(ctx.get())->get_stream();
     // perform reduce synchronously
     RCCL_CHECK(ncclReduce(sendbuff, recvbuff, len, get_nccl_dtype(dtype),
-            get_nccl_reduce_op(op), root, m_rccl->m_comm, stream));
+                          get_nccl_reduce_op(op), root, m_rccl->m_comm,
+                          stream));
     HIP_CHECK(hipStreamSynchronize(stream));
     return MEGRAY_OK;
 }
 
-} // namespace MegRay
+}  // namespace MegRay

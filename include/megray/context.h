@@ -6,7 +6,8 @@
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied.
  */
 
 #pragma once
@@ -28,9 +29,9 @@ typedef enum {
  * a communicator operation is called
  */
 class Context {
-    public:
-        virtual ContextType type() const = 0;
-        virtual ~Context() = default;
+public:
+    virtual ContextType type() const = 0;
+    virtual ~Context() = default;
 };
 
-} // namespace MegRay
+}  // namespace MegRay

@@ -6,7 +6,8 @@
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied.
  */
 
 #include "communicator.h"
@@ -18,9 +19,11 @@
 namespace MegRay {
 
 Status UcxCommunicator::all_to_all(const void* sendbuff, void* recvbuff,
-        size_t len, DType dtype, std::shared_ptr<Context> ctx) {
+                                   size_t len, DType dtype,
+                                   std::shared_ptr<Context> ctx) {
     // get cuda stream
-    MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_CUDA, "only cuda context supported");
+    MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_CUDA,
+                  "only cuda context supported");
     cudaStream_t stream = static_cast<CudaContext*>(ctx.get())->get_stream();
     CUDA_CHECK(cudaStreamSynchronize(stream));
     // perform send recv
@@ -39,4 +42,4 @@ Status UcxCommunicator::all_to_all(const void* sendbuff, void* recvbuff,
     return MEGRAY_OK;
 }
 
-} // namespace MegRay
+}  // namespace MegRay

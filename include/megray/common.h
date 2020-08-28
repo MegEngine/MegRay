@@ -6,7 +6,8 @@
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied.
  */
 
 #pragma once
@@ -35,45 +36,43 @@ typedef enum {
     MEGRAY_STATUS_COUNT = 12,
 } Status;
 
-#define MEGRAY_CHECK(expr)                              \
-    do {                                                \
-        Status status = (expr);                         \
-        if (status != MEGRAY_OK) {                      \
-            MEGRAY_ERROR("error [%d]", status);         \
-            return status;                              \
-        }                                               \
+#define MEGRAY_CHECK(expr)                      \
+    do {                                        \
+        Status status = (expr);                 \
+        if (status != MEGRAY_OK) {              \
+            MEGRAY_ERROR("error [%d]", status); \
+            return status;                      \
+        }                                       \
     } while (0)
 
-#define SYS_CHECK_RET(expr, errval, retval)             \
-    do {                                                \
-        retval = (expr);                                \
-        if (retval == errval) {                         \
-            MEGRAY_ERROR("system error [%d]: %s",       \
-                errno, strerror(errno));                \
-            return MEGRAY_SYS_ERROR;                    \
-        }                                               \
+#define SYS_CHECK_RET(expr, errval, retval)                                \
+    do {                                                                   \
+        retval = (expr);                                                   \
+        if (retval == errval) {                                            \
+            MEGRAY_ERROR("system error [%d]: %s", errno, strerror(errno)); \
+            return MEGRAY_SYS_ERROR;                                       \
+        }                                                                  \
     } while (0)
 
-#define SYS_CHECK(expr, errval)                         \
-    do {                                                \
-        int retval;                                     \
-        SYS_CHECK_RET(expr, errval, retval);            \
+#define SYS_CHECK(expr, errval)              \
+    do {                                     \
+        int retval;                          \
+        SYS_CHECK_RET(expr, errval, retval); \
     } while (0)
 
-#define SYS_ASSERT_RET(expr, errval, retval)            \
-    do {                                                \
-        retval = (expr);                                \
-        if (retval == errval) {                         \
-            MEGRAY_ERROR("system error [%d]: %s",       \
-                errno, strerror(errno));                \
-            MEGRAY_THROW("system error");               \
-        }                                               \
+#define SYS_ASSERT_RET(expr, errval, retval)                               \
+    do {                                                                   \
+        retval = (expr);                                                   \
+        if (retval == errval) {                                            \
+            MEGRAY_ERROR("system error [%d]: %s", errno, strerror(errno)); \
+            MEGRAY_THROW("system error");                                  \
+        }                                                                  \
     } while (0)
 
-#define SYS_ASSERT(expr, errval)                        \
-    do {                                                \
-        int retval;                                     \
-        SYS_ASSERT_RET(expr, errval, retval);           \
+#define SYS_ASSERT(expr, errval)              \
+    do {                                      \
+        int retval;                           \
+        SYS_ASSERT_RET(expr, errval, retval); \
     } while (0)
 
 #define CUDA_CHECK(expr)                                \
@@ -81,7 +80,7 @@ typedef enum {
         cudaError_t status = (expr);                    \
         if (status != cudaSuccess) {                    \
             MEGRAY_ERROR("cuda error [%d]: %s", status, \
-                cudaGetErrorString(status));            \
+                         cudaGetErrorString(status));   \
             return MEGRAY_CUDA_ERR;                     \
         }                                               \
     } while (0)
@@ -91,7 +90,7 @@ typedef enum {
         cudaError_t status = (expr);                    \
         if (status != cudaSuccess) {                    \
             MEGRAY_ERROR("cuda error [%d]: %s", status, \
-                cudaGetErrorString(status));            \
+                         cudaGetErrorString(status));   \
             MEGRAY_THROW("cuda error");                 \
         }                                               \
     } while (0)
@@ -125,4 +124,4 @@ typedef enum {
     MEGRAY_REDUCEOP_COUNT = 3,
 } ReduceOp;
 
-} // namespace MegRay
+}  // namespace MegRay

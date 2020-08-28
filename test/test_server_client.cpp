@@ -1,4 +1,4 @@
- /**
+/**
  * \file test/test_server_client.cpp
  * MegRay is Licensed under the Apache License, Version 2.0 (the "License")
  *
@@ -6,7 +6,8 @@
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied.
  */
 
 #include <thread>
@@ -14,8 +15,8 @@
 
 #include <gtest/gtest.h>
 
-#include "megray/server.h"
 #include "megray/client.h"
+#include "megray/server.h"
 
 TEST(TestServerClient, GetHostIP) {
     char* ip = MegRay::get_host_ip();
@@ -189,12 +190,17 @@ TEST(TestServerClient, Sequence) {
 
         // send a sequence of requets without checking output
         ASSERT_EQ(MegRay::MEGRAY_OK, client->barrier());
-        ASSERT_EQ(MegRay::MEGRAY_OK, client->broadcast(input, output, chunk_size, 1));
-        ASSERT_EQ(MegRay::MEGRAY_OK, client->allgather(input, output, chunk_size));
+        ASSERT_EQ(MegRay::MEGRAY_OK,
+                  client->broadcast(input, output, chunk_size, 1));
+        ASSERT_EQ(MegRay::MEGRAY_OK,
+                  client->allgather(input, output, chunk_size));
         ASSERT_EQ(MegRay::MEGRAY_OK, client->barrier());
-        ASSERT_EQ(MegRay::MEGRAY_OK, client->allgather(input, output, chunk_size));
-        ASSERT_EQ(MegRay::MEGRAY_OK, client->broadcast(input, output, chunk_size, 2));
-        ASSERT_EQ(MegRay::MEGRAY_OK, client->allgather(input, output, chunk_size));
+        ASSERT_EQ(MegRay::MEGRAY_OK,
+                  client->allgather(input, output, chunk_size));
+        ASSERT_EQ(MegRay::MEGRAY_OK,
+                  client->broadcast(input, output, chunk_size, 2));
+        ASSERT_EQ(MegRay::MEGRAY_OK,
+                  client->allgather(input, output, chunk_size));
         ASSERT_EQ(MegRay::MEGRAY_OK, client->barrier());
 
         free(output);

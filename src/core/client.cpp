@@ -6,7 +6,8 @@
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied.
  */
 
 #include "megray/client.h"
@@ -18,12 +19,10 @@
 
 namespace MegRay {
 
-Client::Client(uint32_t nranks, uint32_t rank) :
-        m_nranks(nranks), m_rank(rank), m_connected(false) {
-}
+Client::Client(uint32_t nranks, uint32_t rank)
+        : m_nranks(nranks), m_rank(rank), m_connected(false) {}
 
-Client::~Client() {
-}
+Client::~Client() {}
 
 Status Client::connect(const char* master_ip, int port) {
     std::unique_lock<std::mutex> lock(m_mutex);
@@ -44,7 +43,9 @@ Status Client::connect(const char* master_ip, int port) {
     SYS_CHECK(inet_pton(AF_INET, master_ip, &server_addr.sin_addr), -1);
 
     // connect
-    SYS_CHECK(::connect(m_conn, (struct sockaddr*)&server_addr, sizeof(server_addr)), -1);
+    SYS_CHECK(::connect(m_conn, (struct sockaddr*)&server_addr,
+                        sizeof(server_addr)),
+              -1);
 
     // send client rank
     SYS_CHECK(send(m_conn, &m_rank, sizeof(uint32_t), 0), -1);
@@ -76,7 +77,8 @@ Status Client::barrier() {
     return MEGRAY_OK;
 }
 
-Status Client::broadcast(const void* sendbuff, void* recvbuff, size_t len, uint32_t root) {
+Status Client::broadcast(const void* sendbuff, void* recvbuff, size_t len,
+                         uint32_t root) {
     std::unique_lock<std::mutex> lock(m_mutex);
 
     if (!m_connected) {
@@ -131,4 +133,4 @@ Status Client::allgather(const void* sendbuff, void* recvbuff, size_t sendlen) {
     return MEGRAY_OK;
 }
 
-} // namespace MegRay
+}  // namespace MegRay

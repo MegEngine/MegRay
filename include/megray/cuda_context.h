@@ -6,7 +6,8 @@
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * "AS IS" BASIS, WITHOUT ARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied.
  */
 
 #include "megray/context.h"
@@ -20,7 +21,7 @@
         cudaError_t status = (expr);                    \
         if (status != cudaSuccess) {                    \
             MEGRAY_ERROR("cuda error [%d]: %s", status, \
-                cudaGetErrorString(status));            \
+                         cudaGetErrorString(status));   \
             return MEGRAY_CUDA_ERR;                     \
         }                                               \
     } while (0)
@@ -30,26 +31,23 @@
         cudaError_t status = (expr);                    \
         if (status != cudaSuccess) {                    \
             MEGRAY_ERROR("cuda error [%d]: %s", status, \
-                cudaGetErrorString(status));            \
+                         cudaGetErrorString(status));   \
             MEGRAY_THROW("cuda error");                 \
         }                                               \
     } while (0)
 
-namespace MegRay{
+namespace MegRay {
 
-class CudaContext: public Context{
+class CudaContext : public Context {
 public:
-    CudaContext(cudaStream_t stream): m_stream{stream}{}
-    ContextType type() const override{
-        return MEGRAY_CTX_CUDA;
-    }
-    cudaStream_t get_stream(){
-        return m_stream;
-    }
+    CudaContext(cudaStream_t stream) : m_stream{stream} {}
+    ContextType type() const override { return MEGRAY_CTX_CUDA; }
+    cudaStream_t get_stream() { return m_stream; }
+
 private:
     cudaStream_t m_stream;
 };
 
-}
+}  // namespace MegRay
 
 #endif
