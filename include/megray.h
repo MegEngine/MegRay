@@ -1,5 +1,5 @@
 /**
- * \file include/megray/megray.h
+ * \file include/megray.h
  * MegRay is Licensed under the Apache License, Version 2.0 (the "License")
  *
  * Copyright (c) 2014-2020 Megvii Inc. All rights reserved.
@@ -12,8 +12,17 @@
 
 #pragma once
 
+#include "megray/config.h"
 #include "megray/communicator.h"
 #include "megray/server.h"
+
+#ifdef MEGRAY_WITH_CUDA
+#include "megray/cuda_context.h"
+#endif
+
+#ifdef MEGRAY_WITH_HIP
+#include "megray/hip_context.h"
+#endif
 
 namespace MegRay {
 

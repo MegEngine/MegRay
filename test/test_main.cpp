@@ -11,7 +11,7 @@
  */
 
 #include <gtest/gtest.h>
-#include "megray/megray.h"
+#include "megray.h"
 
 int main(int argc, char* argv[]) {
     ::testing::InitGoogleTest(&argc, argv);

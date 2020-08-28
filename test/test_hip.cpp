@@ -10,7 +10,7 @@
  * implied.
  */
 
-#include "megray/hip_context.h"
+#include "megray.h"
 
 #include "test_utils.h"
 

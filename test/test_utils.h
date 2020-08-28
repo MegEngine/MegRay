@@ -14,7 +14,7 @@
 
 #include <memory>
 
-#include "megray/context.h"
+#include "megray.h"
 
 namespace MegRay {
 

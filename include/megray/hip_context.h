@@ -10,6 +10,8 @@
  * implied.
  */
 
+#include <memory>
+
 #include "megray/context.h"
 
 #ifdef MEGRAY_WITH_HIP
@@ -41,7 +43,10 @@ namespace MegRay {
 class HipContext : public Context {
 public:
     HipContext(hipStream_t stream) : m_stream{stream} {}
-    virtual ContextType type() const override { return MEGRAY_CTX_HIP; }
+    static std::shared_ptr<HipContext> make(hipStream_t stream) {
+        return std::make_shared<HipContext>(stream);
+    }
+    ContextType type() const override { return MEGRAY_CTX_HIP; }
     hipStream_t get_stream() { return m_stream; }
 
 private:

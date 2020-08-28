@@ -18,7 +18,7 @@
 
 #include <gtest/gtest.h>
 
-#include "megray/megray.h"
+#include "megray.h"
 
 #include "test_utils.h"
 

@@ -10,6 +10,8 @@
  * implied.
  */
 
+#include <memory>
+
 #include "megray/context.h"
 
 #ifdef MEGRAY_WITH_CUDA
@@ -41,6 +43,9 @@ namespace MegRay {
 class CudaContext : public Context {
 public:
     CudaContext(cudaStream_t stream) : m_stream{stream} {}
+    static std::shared_ptr<CudaContext> make(cudaStream_t stream) {
+        return std::make_shared<CudaContext>(stream);
+    }
     ContextType type() const override { return MEGRAY_CTX_CUDA; }
     cudaStream_t get_stream() { return m_stream; }
 

@@ -19,7 +19,7 @@
 
 #include <gtest/gtest.h>
 
-#include "megray/config.h"
+#include "megray.h"
 
 #include "test_base.h"
 

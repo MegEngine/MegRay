@@ -10,7 +10,7 @@
  * implied.
  */
 
-#include "megray/megray.h"
+#include "megray.h"
 
 #ifdef MEGRAY_WITH_NCCL
 #include "nccl/communicator.h"
