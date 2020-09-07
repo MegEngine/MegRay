@@ -18,6 +18,7 @@ namespace MegRay {
 
 size_t get_dtype_size(DType dtype) {
     switch (dtype) {
+        case MEGRAY_CHAR:
         case MEGRAY_INT8:
         case MEGRAY_UINT8:
             return 1;

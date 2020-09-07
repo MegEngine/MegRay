@@ -121,8 +121,8 @@ Status UcxCommunicator::do_init() {
     return MEGRAY_OK;
 }
 
-Status UcxCommunicator::send(const void* sendbuff, size_t len, uint32_t rank,
-                             std::shared_ptr<Context> ctx) {
+Status UcxCommunicator::_send(const void* sendbuff, size_t size, uint32_t rank,
+                              std::shared_ptr<Context> ctx) {
     // cuda stream synchronize
     MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_CUDA,
                   "only cuda context supported");
@@ -130,14 +130,14 @@ Status UcxCommunicator::send(const void* sendbuff, size_t len, uint32_t rank,
     CUDA_CHECK(cudaStreamSynchronize(stream));
     // perform send recv
     char sync;
-    MEGRAY_CHECK(_send(sendbuff, len, rank));
-    MEGRAY_CHECK(_recv(&sync, sizeof(char), rank));  // synchronize
+    MEGRAY_CHECK(_isend(sendbuff, size, rank));
+    MEGRAY_CHECK(_irecv(&sync, sizeof(char), rank));  // synchronize
     MEGRAY_CHECK(_flush());
     return MEGRAY_OK;
 }
 
-Status UcxCommunicator::recv(void* recvbuff, size_t len, uint32_t rank,
-                             std::shared_ptr<Context> ctx) {
+Status UcxCommunicator::_recv(void* recvbuff, size_t size, uint32_t rank,
+                              std::shared_ptr<Context> ctx) {
     // cuda stream synchronize
     MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_CUDA,
                   "only cuda context supported");
@@ -145,13 +145,14 @@ Status UcxCommunicator::recv(void* recvbuff, size_t len, uint32_t rank,
     CUDA_CHECK(cudaStreamSynchronize(stream));
     // perform send recv
     char sync;
-    MEGRAY_CHECK(_recv(recvbuff, len, rank));
-    MEGRAY_CHECK(_send(&sync, sizeof(char), rank));  // synchronize
+    MEGRAY_CHECK(_irecv(recvbuff, size, rank));
+    MEGRAY_CHECK(_isend(&sync, sizeof(char), rank));  // synchronize
     MEGRAY_CHECK(_flush());
     return MEGRAY_OK;
 }
 
-Status UcxCommunicator::_send(const void* sendbuff, size_t len, uint32_t rank) {
+Status UcxCommunicator::_isend(const void* sendbuff, size_t len,
+                               uint32_t rank) {
     MEGRAY_ASSERT(rank != m_rank, "invalid send rank");
     std::lock_guard<std::mutex> lock(m_requests_mtx);
     // submit non-blocking send request to ucp
@@ -165,7 +166,7 @@ Status UcxCommunicator::_send(const void* sendbuff, size_t len, uint32_t rank) {
     return MEGRAY_OK;
 }
 
-Status UcxCommunicator::_recv(void* recvbuff, size_t len, uint32_t rank) {
+Status UcxCommunicator::_irecv(void* recvbuff, size_t len, uint32_t rank) {
     MEGRAY_ASSERT(rank != m_rank, "invalid recv rank");
     std::lock_guard<std::mutex> lock(m_requests_mtx);
     // submit non-blocking receive request to ucp

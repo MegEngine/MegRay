@@ -60,7 +60,7 @@ Status UcxCommunicator::reduce(const void* sendbuff, void* recvbuff, size_t len,
                 auto virtual_dest = virtual_rank ^ bit;
                 auto actual_dest = ring_add(virtual_dest, root, m_nranks);
                 if (virtual_dest < m_nranks) {  // valid dest
-                    MEGRAY_CHECK(_send(rbuffer, len * size, actual_dest));
+                    MEGRAY_CHECK(_isend(rbuffer, len * size, actual_dest));
                     MEGRAY_CHECK(_flush());
                     CUDA_CHECK(cudaStreamSynchronize(stream));
                 }
@@ -68,7 +68,7 @@ Status UcxCommunicator::reduce(const void* sendbuff, void* recvbuff, size_t len,
                 auto virtual_src = virtual_rank ^ bit;
                 auto actual_src = ring_add(virtual_src, root, m_nranks);
                 if (virtual_src < m_nranks) {  // valid src
-                    MEGRAY_CHECK(_recv(lbuffer, len * size, actual_src));
+                    MEGRAY_CHECK(_irecv(lbuffer, len * size, actual_src));
                     MEGRAY_CHECK(_flush());
                     MegRay::reduce(lbuffer, rbuffer, rbuffer, len, dtype, op,
                                    stream);

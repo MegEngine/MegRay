@@ -32,11 +32,11 @@ public:
 
     Status do_init() override;
 
-    Status send(const void* sendbuff, size_t len, uint32_t rank,
-                std::shared_ptr<Context> ctx) override;
+    Status _send(const void* sendbuff, size_t size, uint32_t rank,
+                 std::shared_ptr<Context> ctx) override;
 
-    Status recv(void* recvbuff, size_t len, uint32_t rank,
-                std::shared_ptr<Context> ctx) override;
+    Status _recv(void* recvbuff, size_t size, uint32_t rank,
+                 std::shared_ptr<Context> ctx) override;
 
     Status scatter(const void* sendbuff, void* recvbuff, size_t recvlen,
                    DType dtype, uint32_t root,

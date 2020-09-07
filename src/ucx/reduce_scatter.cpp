@@ -44,8 +44,8 @@ Status UcxCommunicator::reduce_scatter(const void* sendbuff, void* recvbuff,
     for (size_t i = 1; i < m_nranks; ++i) {
         size_t send_offset = recvlen * size * ring_sub(m_rank, i, m_nranks);
         size_t recv_offset = recvlen * size * ring_sub(m_rank, i + 1, m_nranks);
-        MEGRAY_CHECK(_send(rbuffer + send_offset, recvlen * size, rrank));
-        MEGRAY_CHECK(_recv(lbuffer, recvlen * size, lrank));
+        MEGRAY_CHECK(_isend(rbuffer + send_offset, recvlen * size, rrank));
+        MEGRAY_CHECK(_irecv(lbuffer, recvlen * size, lrank));
         MEGRAY_CHECK(_flush());
         MegRay::reduce(lbuffer, rbuffer + recv_offset, rbuffer + recv_offset,
                        recvlen, dtype, op, stream);

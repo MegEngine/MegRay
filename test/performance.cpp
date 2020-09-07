@@ -42,9 +42,9 @@ typedef std::function<void(std::shared_ptr<MegRay::Communicator>, void*, void*,
                            std::shared_ptr<MegRay::Context>)>
         KernelFunc;
 
-std::map<std::string, MegRay::Backend> backends;
-std::map<std::string, size_t> bufsizes;
-std::map<std::string, WorkerFunc> funcs;
+std::vector<std::pair<std::string, MegRay::Backend>> backends;
+std::vector<std::pair<std::string, size_t>> bufsizes;
+std::vector<std::pair<std::string, WorkerFunc>> funcs;
 
 size_t get_timestamp() {
     timeval tv;
@@ -115,9 +115,11 @@ void run_send_recv(Arguments args, int dev, size_t bufsize, size_t* res) {
                           void* in_ptr, void* out_ptr,
                           std::shared_ptr<MegRay::Context> context) {
         if (args.node_rank == 0 and dev == 0) {
-            comm->send(in_ptr, args.in_bufsize / sizeof(float), 1, context);
+            comm->send(in_ptr, bufsize / sizeof(float), MegRay::MEGRAY_FLOAT32,
+                       1, context);
         } else if (args.node_rank == 0 and dev == 1) {
-            comm->recv(out_ptr, args.out_bufsize / sizeof(float), 0, context);
+            comm->recv(out_ptr, bufsize / sizeof(float), MegRay::MEGRAY_FLOAT32,
+                       0, context);
         }
     };
     args.in_bufsize = bufsize;
@@ -225,29 +227,30 @@ void run_reduce_sum(Arguments args, int dev, size_t bufsize, size_t* res) {
 
 void init_maps() {
 #ifdef MEGRAY_WITH_NCCL
-    backends["NCCL"] = MegRay::MEGRAY_NCCL;
+    backends.emplace_back("NCCL", MegRay::MEGRAY_NCCL);
 #endif
 #ifdef MEGRAY_WITH_UCX
-    backends["UCX"] = MegRay::MEGRAY_UCX;
+    backends.emplace_back("UCX", MegRay::MEGRAY_UCX);
 #endif
 #ifdef MEGRAY_WITH_RCCL
-    backends["RCCL"] = MegRay::MEGRAY_RCCL;
+    backends.emplace_back("RCCL", MegRay::MEGRAY_RCCL);
 #endif
 
-    bufsizes["  8B"] = 8;
-    bufsizes[" 1KB"] = 1024;
-    bufsizes[" 1MB"] = 1024 * 1024;
-    bufsizes["10MB"] = 10 * 1024 * 1024;
+    bufsizes.emplace_back("8B", 8);
+    bufsizes.emplace_back("1KB", 1024);
+    bufsizes.emplace_back("512KB", 512 * 1024);
+    bufsizes.emplace_back("1MB", 1024 * 1024);
+    bufsizes.emplace_back("10MB", 10 * 1024 * 1024);
 
-    funcs["send_recv"] = run_send_recv;
-    funcs["scatter"] = run_scatter;
-    funcs["gather"] = run_gather;
-    funcs["all_to_all"] = run_all_to_all;
-    funcs["all_gather"] = run_all_gather;
-    funcs["all_reduce_sum"] = run_all_reduce_sum;
-    funcs["reduce_scatter_sum"] = run_reduce_scatter_sum;
-    funcs["broadcast"] = run_broadcast;
-    funcs["reduce_sum"] = run_reduce_sum;
+    funcs.emplace_back("send_recv", run_send_recv);
+    funcs.emplace_back("all_reduce_sum", run_all_reduce_sum);
+    funcs.emplace_back("scatter", run_scatter);
+    funcs.emplace_back("gather", run_gather);
+    funcs.emplace_back("all_to_all", run_all_to_all);
+    funcs.emplace_back("all_gather", run_all_gather);
+    funcs.emplace_back("reduce_scatter_sum", run_reduce_scatter_sum);
+    funcs.emplace_back("broadcast", run_broadcast);
+    funcs.emplace_back("reduce_sum", run_reduce_sum);
 }
 
 template <typename T>

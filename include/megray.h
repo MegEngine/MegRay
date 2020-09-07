@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "megray/config.h"
 #include "megray/communicator.h"
+#include "megray/config.h"
 #include "megray/server.h"
 
 #ifdef MEGRAY_WITH_CUDA

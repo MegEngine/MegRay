@@ -34,8 +34,8 @@ Status UcxCommunicator::all_to_all(const void* sendbuff, void* recvbuff,
         if (r == m_rank) {
             CUDA_CHECK(cudaMemcpy(q, p, bytes, cudaMemcpyDeviceToDevice));
         } else {
-            MEGRAY_CHECK(_send(p, bytes, r));
-            MEGRAY_CHECK(_recv(q, bytes, r));
+            MEGRAY_CHECK(_isend(p, bytes, r));
+            MEGRAY_CHECK(_irecv(q, bytes, r));
         }
     }
     MEGRAY_CHECK(_flush());

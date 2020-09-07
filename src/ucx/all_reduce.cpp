@@ -65,10 +65,10 @@ Status UcxCommunicator::all_reduce(const void* sendbuff, void* recvbuff,
         size_t send_offset = offsets[send_chunk];
         size_t recv_offset = offsets[recv_chunk];
 
-        MEGRAY_CHECK(_send((char*)recvbuff + send_offset,
-                           chunk_sizes[send_chunk] * size, r_rank));
-        MEGRAY_CHECK(_recv((char*)workspace, chunk_sizes[recv_chunk] * size,
-                           l_rank));
+        MEGRAY_CHECK(_isend((char*)recvbuff + send_offset,
+                            chunk_sizes[send_chunk] * size, r_rank));
+        MEGRAY_CHECK(_irecv((char*)workspace, chunk_sizes[recv_chunk] * size,
+                            l_rank));
         MEGRAY_CHECK(_flush());
 
         MegRay::reduce((char*)recvbuff + recv_offset, (char*)workspace,
@@ -76,8 +76,8 @@ Status UcxCommunicator::all_reduce(const void* sendbuff, void* recvbuff,
                        dtype, op, stream);
         CUDA_CHECK(cudaStreamSynchronize(stream));
 
-        MEGRAY_CHECK(_send(&sync_send, sizeof(char), l_rank));
-        MEGRAY_CHECK(_recv(&sync_recv, sizeof(char), r_rank));
+        MEGRAY_CHECK(_isend(&sync_send, sizeof(char), l_rank));
+        MEGRAY_CHECK(_irecv(&sync_recv, sizeof(char), r_rank));
         MEGRAY_CHECK(_flush());
     }
 
@@ -89,14 +89,14 @@ Status UcxCommunicator::all_reduce(const void* sendbuff, void* recvbuff,
         uint32_t send_chunk = ring_sub(m_rank + 1, i, m_nranks);
         uint32_t recv_chunk = ring_sub(m_rank, i, m_nranks);
 
-        MEGRAY_CHECK(_send((char*)recvbuff + offsets[send_chunk],
-                           chunk_sizes[send_chunk] * size, r_rank));
-        MEGRAY_CHECK(_recv((char*)recvbuff + offsets[recv_chunk],
-                           chunk_sizes[recv_chunk] * size, l_rank));
+        MEGRAY_CHECK(_isend((char*)recvbuff + offsets[send_chunk],
+                            chunk_sizes[send_chunk] * size, r_rank));
+        MEGRAY_CHECK(_irecv((char*)recvbuff + offsets[recv_chunk],
+                            chunk_sizes[recv_chunk] * size, l_rank));
         MEGRAY_CHECK(_flush());
 
-        MEGRAY_CHECK(_send(&sync_send, sizeof(char), l_rank));
-        MEGRAY_CHECK(_recv(&sync_recv, sizeof(char), r_rank));
+        MEGRAY_CHECK(_isend(&sync_send, sizeof(char), l_rank));
+        MEGRAY_CHECK(_irecv(&sync_recv, sizeof(char), r_rank));
         MEGRAY_CHECK(_flush());
     }
 

@@ -33,11 +33,11 @@ public:
 
     Status do_init() override;
 
-    Status send(const void* sendbuff, size_t len, uint32_t rank,
-                std::shared_ptr<Context> ctx) override;
+    Status _send(const void* sendbuff, size_t size, uint32_t rank,
+                 std::shared_ptr<Context> ctx) override;
 
-    Status recv(void* recvbuff, size_t len, uint32_t rank,
-                std::shared_ptr<Context> ctx) override;
+    Status _recv(void* recvbuff, size_t size, uint32_t rank,
+                 std::shared_ptr<Context> ctx) override;
 
     Status scatter(const void* sendbuff, void* recvbuff, size_t recvlen,
                    DType dtype, uint32_t root,
@@ -71,12 +71,12 @@ public:
 
 private:
     // internal non-blocking send method
-    Status _send(const void* sendbuff, size_t len, uint32_t rank);
+    Status _isend(const void* sendbuff, size_t len, uint32_t rank);
 
     // internal non-blocking receive method
-    Status _recv(void* recvbuff, size_t len, uint32_t rank);
+    Status _irecv(void* recvbuff, size_t len, uint32_t rank);
 
-    // flush _send and _recv requests
+    // flush _isend and _irecv requests
     Status _flush();
 
     ucp_context_h m_context;

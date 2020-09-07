@@ -112,7 +112,8 @@ typedef enum {
     MEGRAY_FLOAT16 = 6,
     MEGRAY_FLOAT32 = 7,
     MEGRAY_FLOAT64 = 8,
-    MEGRAY_DTYPE_COUNT = 9,
+    MEGRAY_CHAR = 9,
+    MEGRAY_DTYPE_COUNT = 10,
 } DType;
 
 size_t get_dtype_size(DType dtype);

@@ -47,12 +47,22 @@ public:
     virtual Status do_init() = 0;
 
     // send data to another communicator in the group
-    virtual Status send(const void* sendbuff, size_t len, uint32_t rank,
-                        std::shared_ptr<Context> ctx) = 0;
+    virtual Status _send(const void* sendbuff, size_t size, uint32_t rank,
+                         std::shared_ptr<Context> ctx) = 0;
+    Status send(const void* sendbuff, size_t len, DType dtype, uint32_t rank,
+                std::shared_ptr<Context> ctx) {
+        size_t type_size = get_dtype_size(dtype);
+        return _send(sendbuff, len * type_size, rank, ctx);
+    }
 
     // receive data from another communicator in the group
-    virtual Status recv(void* recvbuf, size_t len, uint32_t rank,
-                        std::shared_ptr<Context> ctx) = 0;
+    virtual Status _recv(void* recvbuf, size_t size, uint32_t rank,
+                         std::shared_ptr<Context> ctx) = 0;
+    Status recv(void* recvbuf, size_t len, DType dtype, uint32_t rank,
+                std::shared_ptr<Context> ctx) {
+        size_t type_size = get_dtype_size(dtype);
+        return _recv(recvbuf, len * type_size, rank, ctx);
+    }
 
     // the length of sendbuff = recvlen * m_nranks
     // the length of recvbuff = recvlen

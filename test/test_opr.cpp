@@ -133,10 +133,10 @@ TEST(TestOpr, SendRecv) {
 
         if (rank == 0) {  // send
             trait.memcpy_h2d(ptr, input.data(), len);
-            comm->send(ptr, len, 1, context);
+            comm->send(ptr, len * 1, MegRay::MEGRAY_CHAR, 1, context);
             trait.sync_context(context);
         } else {  // recv
-            comm->recv(ptr, len, 0, context);
+            comm->recv(ptr, len * 1, MegRay::MEGRAY_CHAR, 0, context);
             trait.sync_context(context);
             trait.memcpy_d2h(output.data(), ptr, len);
         }

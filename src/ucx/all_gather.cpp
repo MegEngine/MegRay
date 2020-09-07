@@ -48,14 +48,14 @@ Status UcxCommunicator::all_gather(const void* sendbuff, void* recvbuff,
         // pass (rank - i)-th part to next node
         // recv (rank - i - 1)-th part from previous node
         MEGRAY_CHECK(
-                _send((char*)recvbuff + send_rank * recvlen, recvlen, r_rank));
+                _isend((char*)recvbuff + send_rank * recvlen, recvlen, r_rank));
         MEGRAY_CHECK(
-                _recv((char*)recvbuff + recv_rank * recvlen, recvlen, l_rank));
+                _irecv((char*)recvbuff + recv_rank * recvlen, recvlen, l_rank));
         MEGRAY_CHECK(_flush());
 
         // synchronization
-        MEGRAY_CHECK(_send(&sync_send, sizeof(char), l_rank));
-        MEGRAY_CHECK(_recv(&sync_recv, sizeof(char), r_rank));
+        MEGRAY_CHECK(_isend(&sync_send, sizeof(char), l_rank));
+        MEGRAY_CHECK(_irecv(&sync_recv, sizeof(char), r_rank));
         MEGRAY_CHECK(_flush());
     }
 

@@ -35,11 +35,11 @@ Status UcxCommunicator::gather(const void* sendbuff, void* recvbuff,
                 CUDA_CHECK(cudaMemcpy(p, sendbuff, bytes,
                                       cudaMemcpyDeviceToDevice));
             } else {
-                MEGRAY_CHECK(_recv(p, bytes, r));
+                MEGRAY_CHECK(_irecv(p, bytes, r));
             }
         }
     } else {
-        MEGRAY_CHECK(_send(sendbuff, bytes, root));
+        MEGRAY_CHECK(_isend(sendbuff, bytes, root));
     }
     MEGRAY_CHECK(_flush());
     return MEGRAY_OK;
