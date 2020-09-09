@@ -43,9 +43,11 @@ Status Client::connect(const char* master_ip, int port) {
     SYS_CHECK(inet_pton(AF_INET, master_ip, &server_addr.sin_addr), -1);
 
     // connect
-    SYS_CHECK(::connect(m_conn, (struct sockaddr*)&server_addr,
-                        sizeof(server_addr)),
-              -1);
+    int ret;
+    do {
+        ret = ::connect(m_conn, (struct sockaddr*)&server_addr,
+                        sizeof(server_addr));
+    } while (ret == -1);
 
     // send client rank
     SYS_CHECK(send(m_conn, &m_rank, sizeof(uint32_t), 0), -1);
