@@ -23,13 +23,12 @@
 #include <thread>
 #include <vector>
 
-#include "args.hxx"
 #include "megray.h"
 #include "test_utils.h"
 
 struct Arguments {
     // global arguments
-    MegRay::Backend backends;  // MEGRAY_BACKEND_COUNT means ALL
+    std::string backends;
     std::string master_ip;
     int port;
     int n_nodes;
@@ -49,6 +48,23 @@ struct Arguments {
     size_t bufsize;
     size_t in_bufsize;
     size_t out_bufsize;
+
+    Arguments() {
+        backends = "ALL";
+        master_ip = "127.0.0.1";
+        port = 2395;
+        n_nodes = 1;
+        node_rank = 0;
+        n_devs = 2;
+        sizes = {8, 1024, 512 * 1024, 1024 * 1024, 10 * 1024 * 1024};
+        send_rank = 0;
+        send_dev = 0;
+        recv_rank = 0;
+        recv_dev = 1;
+        warmup_iters = 100;
+        iters = 100;
+        func_select = "ALL";
+    }
 };
 
 typedef std::function<void(Arguments, int, size_t*)> WorkerFunc;
@@ -238,18 +254,15 @@ void run_reduce_sum(Arguments args, int dev, size_t* res) {
 
 void init_maps(Arguments args) {
 #ifdef MEGRAY_WITH_NCCL
-    if (args.backends == MegRay::MEGRAY_BACKEND_COUNT ||
-        args.backends == MegRay::MEGRAY_NCCL)
+    if (args.backends == "ALL" || args.backends == "NCCL")
         backends.emplace_back("NCCL", MegRay::MEGRAY_NCCL);
 #endif
 #ifdef MEGRAY_WITH_UCX
-    if (args.backends == MegRay::MEGRAY_BACKEND_COUNT ||
-        args.backends == MegRay::MEGRAY_UCX)
+    if (args.backends == "ALL" || args.backends == "UCX")
         backends.emplace_back("UCX", MegRay::MEGRAY_UCX);
 #endif
 #ifdef MEGRAY_WITH_RCCL
-    if (args.backends == MegRay::MEGRAY_BACKEND_COUNT ||
-        args.backends == MegRay::MEGRAY_RCCL)
+    if (args.backends == "ALL" || args.backends == "RCCL")
         backends.emplace_back("RCCL", MegRay::MEGRAY_RCCL);
 #endif
 
@@ -350,87 +363,131 @@ int main_test(Arguments args) {
     return 0;
 }
 
+void show_help() {
+    std::cout
+            << "./test/performance {OPTIONS}\n"
+               "\n"
+               "    This is a benchmark for MegRay.\n"
+               "\n"
+               "  OPTIONS:\n"
+               "\n"
+               "      -h                                Display this help "
+               "menu\n"
+               "      compulsive\n"
+               "        -d[int]                           Number of devs\n"
+               "\n"
+               "      optional\n"
+               "        -I[string]                        Master IP\n"
+               "                                            Default: "
+               "127.0.0.1\n"
+               "        -P[int]                           Master port\n"
+               "                                            Default: 2395\n"
+               "        -n[int]                           Number of nodes\n"
+               "                                            Default: 1\n"
+               "        -r[int]                           Rank of node\n"
+               "                                            Default: 0\n"
+               "        -e[string]                        Choose a backend for "
+               "communication\n"
+               "                                          One of: ALL, NCCL, "
+               "RCCL, UCX\n"
+               "        -f[string]                        Select function: "
+               "ALL, all_reduce,\n"
+               "                                          send_recv, scatter, "
+               "gather,\n"
+               "                                          all_to_all, "
+               "all_gather,\n"
+               "                                          reduce_scatter, "
+               "broadcast, reduce\n"
+               "                                            Default: ALL\n"
+               "        -s[int]                           packet size\n"
+               "        -w[int]                           warmup iterations\n"
+               "                                            Default: 100\n"
+               "        -i[int]                           test iterations\n"
+               "                                            Default: 100\n"
+               "        -A=[int]                          send/recv operation "
+               "send node rank\n"
+               "                                            Default: 0\n"
+               "        -B=[int]                          send/recv operation "
+               "recv node rank\n"
+               "                                            Default: 0\n"
+               "        -C=[int]                          send/recv operation "
+               "send node dev\n"
+               "                                            Default: 0\n"
+               "        -D=[int]                          send/recv operation "
+               "recv node dev\n"
+               "                                            Default: 1\n"
+               "\n"
+               "    local example: ./performance -d 4\n"
+               "    distributed example1: ./performance -d 4 -I 127.0.0.1 -n "
+               "2 -r 0\n"
+               "    distributed example2: ./performance -d 4 -I 127.0.0.1 -n "
+               "2 -r 1\n"
+            << std::endl;
+}
+
 int main(int argc, char* argv[]) {
     // args definition
-    args::ArgumentParser parser("This is a benchmark for MegRay.",
-                                "local example: ./performance -d 4\n\n"
-                                "distributed example1: ./performance -d 4 "
-                                "--ip=127.0.0.1 -n 2 -r 0\n"
-                                "distributed example2: ./performance -d 4 "
-                                "--ip=127.0.0.1 -n 2 -r 1");
-    parser.helpParams.addDefault = true;
-    parser.helpParams.addChoices = true;
-    args::HelpFlag help(parser, "help", "Display this help menu",
-                        {'h', "help"});
-    args::Group commands(parser, "compulsive", args::Group::Validators::All);
-    args::ValueFlag<int> n_devs(commands, "int", "Number of devs",
-                                {'d', "devs"});
+    Arguments args;
 
-    args::Group options(parser, "optional");
-    args::ValueFlag<std::string> master_ip(options, "string", "Master IP",
-                                           {'I', "ip"}, "127.0.0.1");
-    args::ValueFlag<int> port(options, "int", "Master port", {'P', "port"},
-                              2395);
-    args::ValueFlag<int> n_nodes(options, "int", "Number of nodes",
-                                 {'n', "nnodes"}, 1);
-    args::ValueFlag<int> node_rank(options, "int", "Rank of node",
-                                   {'r', "node"}, 0);
-    args::MapFlag<std::string, MegRay::Backend> backend(
-            options, "string", "Choose a backend for communication",
-            {'e', "backend"},
-            {{"ALL", MegRay::MEGRAY_BACKEND_COUNT},
-             {"NCCL", MegRay::MEGRAY_NCCL},
-             {"UCX", MegRay::MEGRAY_UCX},
-             {"RCCL", MegRay::MEGRAY_RCCL}},
-            MegRay::MEGRAY_BACKEND_COUNT);
-    args::ValueFlag<std::string> func_select(
-            options, "string",
-            "Select function: ALL, all_reduce, send_recv, scatter, gather, "
-            "all_to_all, all_gather, reduce_scatter, broadcast, reduce",
-            {'f', "func"}, "ALL");
-    args::ValueFlagList<int> sizes(
-            options, "int", "packet size", {'s', "size"},
-            {8, 1024, 512 * 1024, 1024 * 1024, 10 * 1024 * 1024});
-    args::ValueFlag<int> warmup_iters(options, "int", "warmup iterations",
-                                      {'w', "warmup"}, 100);
-    args::ValueFlag<int> iters(options, "int", "test iterations", {'i', "iter"},
-                               100);
-    args::ValueFlag<int> send_rank(
-            options, "int", "send/recv operation send node rank", {"srank"}, 0);
-    args::ValueFlag<int> recv_rank(
-            options, "int", "send/recv operation recv node rank", {"rrank"}, 0);
-    args::ValueFlag<int> send_dev(
-            options, "int", "send/recv operation send node dev", {"sdev"}, 0);
-    args::ValueFlag<int> recv_dev(
-            options, "int", "send/recv operation recv node dev", {"rdev"}, 1);
-
-    // args parser and validation
-    try {
-        parser.ParseCLI(argc, argv);
-    } catch (args::Help) {
-        std::cout << parser;
-        return 0;
-    } catch (args::ParseError e) {
-        std::cerr << e.what() << std::endl;
-        std::cerr << parser;
-        return 1;
-    } catch (args::ValidationError e) {
-        std::cerr << e.what() << std::endl;
-        std::cerr << parser;
-        return 1;
+    char ch;
+    while ((ch = getopt(argc, argv, "hd:I:P:n:r:e:f:s:w:i:A:B:C:D:")) != EOF) {
+        switch (ch) {
+            case 'h':
+                show_help();
+                exit(0);
+            case 'd':
+                args.n_devs = atoi(optarg);
+                break;
+            case 'I':
+                args.master_ip = optarg;
+                break;
+            case 'P':
+                args.port = atoi(optarg);
+                break;
+            case 'n':
+                args.n_nodes = atoi(optarg);
+                break;
+            case 'r':
+                args.node_rank = atoi(optarg);
+                break;
+            case 'e':
+                args.backends = optarg;
+                break;
+            case 'f':
+                args.func_select = optarg;
+                break;
+            case 's':
+                args.sizes = std::vector<int>(1, atoi(optarg));
+                break;
+            case 'w':
+                args.warmup_iters = atoi(optarg);
+                break;
+            case 'i':
+                args.iters = atoi(optarg);
+                break;
+            case 'A':
+                args.send_rank = atoi(optarg);
+                break;
+            case 'B':
+                args.send_dev = atoi(optarg);
+                break;
+            case 'C':
+                args.recv_rank = atoi(optarg);
+                break;
+            case 'D':
+                args.recv_dev = atoi(optarg);
+                break;
+            default:
+                std::cerr << "Error arguments" << std::endl;
+                show_help();
+                exit(1);
+        }
     }
 
-    Arguments args = {
-            args::get(backend),   args::get(master_ip),
-            args::get(port),      args::get(n_nodes),
-            args::get(node_rank), args::get(n_devs),
-            args::get(sizes),     args::get(send_rank),
-            args::get(send_dev),  args::get(recv_rank),
-            args::get(recv_dev),  args::get(warmup_iters),
-            args::get(iters),     args::get(func_select),
-    };
+    // args parser and validation
     init_maps(args);
 
+    // run
     main_test(args);
 
     return 0;
