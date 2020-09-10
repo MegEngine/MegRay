@@ -20,4 +20,16 @@ Status Communicator::init(const char* master_ip, int port) {
     return do_init();
 }
 
+Status Communicator::recv(void* recvbuf, size_t len, DType dtype, uint32_t rank,
+                          std::shared_ptr<Context> ctx) {
+    size_t type_size = get_dtype_size(dtype);
+    return _recv(recvbuf, len * type_size, rank, ctx);
+}
+
+Status Communicator::send(const void* sendbuff, size_t len, DType dtype,
+                          uint32_t rank, std::shared_ptr<Context> ctx) {
+    size_t type_size = get_dtype_size(dtype);
+    return _send(sendbuff, len * type_size, rank, ctx);
+}
+
 }  // namespace MegRay

@@ -43,26 +43,18 @@ public:
     // establish connection with megray server
     Status init(const char* master_ip, int port);
 
-    // implemented in the subclass and called in init()
-    virtual Status do_init() = 0;
-
     // send data to another communicator in the group
-    virtual Status _send(const void* sendbuff, size_t size, uint32_t rank,
-                         std::shared_ptr<Context> ctx) = 0;
+    // implemented in the subclass _send()
     Status send(const void* sendbuff, size_t len, DType dtype, uint32_t rank,
-                std::shared_ptr<Context> ctx) {
-        size_t type_size = get_dtype_size(dtype);
-        return _send(sendbuff, len * type_size, rank, ctx);
-    }
+                std::shared_ptr<Context> ctx);
 
     // receive data from another communicator in the group
-    virtual Status _recv(void* recvbuf, size_t size, uint32_t rank,
-                         std::shared_ptr<Context> ctx) = 0;
+    // implemented in the subclass _recv()
     Status recv(void* recvbuf, size_t len, DType dtype, uint32_t rank,
-                std::shared_ptr<Context> ctx) {
-        size_t type_size = get_dtype_size(dtype);
-        return _recv(recvbuf, len * type_size, rank, ctx);
-    }
+                std::shared_ptr<Context> ctx);
+
+    // implemented in the subclass and called in init()
+    virtual Status do_init() = 0;
 
     // the length of sendbuff = recvlen * m_nranks
     // the length of recvbuff = recvlen
@@ -111,6 +103,14 @@ protected:
     uint32_t m_nranks;
     uint32_t m_rank;
     std::shared_ptr<Client> m_client;
+
+    // send data to another communicator in the group
+    virtual Status _send(const void* sendbuff, size_t size, uint32_t rank,
+                         std::shared_ptr<Context> ctx) = 0;
+
+    // receive data from another communicator in the group
+    virtual Status _recv(void* recvbuf, size_t size, uint32_t rank,
+                         std::shared_ptr<Context> ctx) = 0;
 };
 
 }  // namespace MegRay

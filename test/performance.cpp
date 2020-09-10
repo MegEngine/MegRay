@@ -365,7 +365,7 @@ int main_test(Arguments args) {
 
 void show_help() {
     std::cout
-            << "./test/performance {OPTIONS}\n"
+            << "./performance {OPTIONS}\n"
                "\n"
                "    This is a benchmark for MegRay.\n"
                "\n"
@@ -373,10 +373,10 @@ void show_help() {
                "\n"
                "      -h                                Display this help "
                "menu\n"
-               "      compulsive\n"
-               "        -d[int]                           Number of devs\n"
                "\n"
                "      optional\n"
+               "        -d[int]                           Number of devs\n"
+               "                                            Default: 2\n"
                "        -I[string]                        Master IP\n"
                "                                            Default: "
                "127.0.0.1\n"
