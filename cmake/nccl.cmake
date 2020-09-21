@@ -28,5 +28,6 @@ set_target_properties(
     libnccl PROPERTIES
     IMPORTED_LOCATION ${NCCL_LIBS}
 )
-target_include_directories(libnccl INTERFACE "${NCCL_BUILD_DIR}/include")
+target_include_directories(libnccl INTERFACE "${NCCL_BUILD_DIR}/include" "${CUDA_HOME}/include")
+target_link_directories(libnccl INTERFACE "${CUDA_HOME}/lib64")
 target_link_libraries(libnccl INTERFACE cudart_static ${CMAKE_DL_LIBS} rt)
