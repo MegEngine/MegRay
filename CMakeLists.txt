@@ -15,6 +15,7 @@ option(MEGRAY_WITH_NCCL "" ON)
 option(MEGRAY_WITH_UCX "" OFF)
 option(MEGRAY_WITH_RCCL "" OFF)
 option(MEGRAY_WITH_TEST "Enable test for MegRay." OFF)
+set(MEGRAY_LOG_LEVEL 2 CACHE STRING "MegRay log level")
 
 if(MEGRAY_WITH_NCCL OR MEGRAY_WITH_UCX)
     set(MEGRAY_WITH_CUDA ON)

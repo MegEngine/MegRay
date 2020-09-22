@@ -17,3 +17,4 @@
 #cmakedefine MEGRAY_WITH_TEST
 #cmakedefine MEGRAY_WITH_CUDA
 #cmakedefine MEGRAY_WITH_HIP
+#cmakedefine MEGRAY_LOG_LEVEL @MEGRAY_LOG_LEVEL@
