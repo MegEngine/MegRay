@@ -363,7 +363,7 @@ int main_test(Arguments args) {
     return 0;
 }
 
-void show_help() {
+void show_help(const char* argv0) {
     std::cout
             << "./performance {OPTIONS}\n"
                "\n"
@@ -417,10 +417,16 @@ void show_help() {
                "recv node dev\n"
                "                                            Default: 1\n"
                "\n"
-               "    local example: ./performance -d 4\n"
-               "    distributed example1: ./performance -d 4 -I 127.0.0.1 -n "
+               "    local example: "
+            << argv0
+            << " -d 4\n"
+               "    distributed example1: "
+            << argv0
+            << " -d 4 -I 127.0.0.1 -n "
                "2 -r 0\n"
-               "    distributed example2: ./performance -d 4 -I 127.0.0.1 -n "
+               "    distributed example2: "
+            << argv0
+            << " -d 4 -I 127.0.0.1 -n "
                "2 -r 1\n"
             << std::endl;
 }
@@ -433,7 +439,7 @@ int main(int argc, char* argv[]) {
     while ((ch = getopt(argc, argv, "hd:I:P:n:r:e:f:s:w:i:A:B:C:D:")) != EOF) {
         switch (ch) {
             case 'h':
-                show_help();
+                show_help(argv[0]);
                 exit(0);
             case 'd':
                 args.n_devs = atoi(optarg);
@@ -479,7 +485,7 @@ int main(int argc, char* argv[]) {
                 break;
             default:
                 std::cerr << "Error arguments" << std::endl;
-                show_help();
+                show_help(argv[0]);
                 exit(1);
         }
     }
