@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.9.0)
 project(MegRay)
 
+cmake_policy(SET CMP0077 NEW)
+
 enable_language(CXX)
 
 include(CMakeDependentOption)
@@ -60,26 +62,39 @@ if(${MEGRAY_WITH_CUDA})
 endif()
 
 if(${MEGRAY_WITH_HIP})
-    if(NOT DEFINED ROCM_HOME)
-        set(ROCM_HOME $ENV{ROCM_HOME})
+    if(NOT DEFINED ROCM_PATH)
+        set(ROCM_PATH $ENV{ROCM_PATH} CACHE STRING "")
     endif()
 
-    if(NOT DEFINED ROCM_HOME)
-        set(ROCM_HOME /opt/rocm)
+    if(NOT DEFINED ROCM_PATH)
+        set(ROCM_PATH /opt/rocm)
     endif()
 
     list(APPEND CMAKE_PREFIX_PATH
-                ${ROCM_HOME}
-                ${ROCM_HOME}/hip
-                ${ROCM_HOME}/hcc)
+                ${ROCM_PATH}
+                ${ROCM_PATH}/hip
+                ${ROCM_PATH}/hcc)
     find_package(HIP REQUIRED)
 
     execute_process(
         COMMAND ${HIP_HIPCONFIG_EXECUTABLE} "--cpp_config"
-        OUTPUT_VARIABLE HIP_CONFIG_RESULT
+        OUTPUT_VARIABLE HIP_COMPILE_OPTIONS
     )
 
-    string(REPLACE " " ";" HIP_COMPILE_OPTIONS ${HIP_CONFIG_RESULT})
+    execute_process(
+        COMMAND ${HIP_HIPCONFIG_EXECUTABLE} "--compiler"
+        OUTPUT_VARIABLE HIP_COMPILER
+    )
+
+separate_arguments(HIP_COMPILE_OPTIONS)
+
+    if(${HIP_COMPILER} STREQUAL "hcc")
+        set(HIP_LIBRARY hip_hcc)
+    elseif(${HIP_COMPILER} STREQUAL "clang")
+        set(HIP_LIBRARY amdhip64)
+    else()
+        message(FATAL_ERROR "Unknown HIP compiler ${HIP_COMPILER}")
+    endif()
 endif()
 
 add_subdirectory(src)
