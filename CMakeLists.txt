@@ -15,9 +15,11 @@ set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
 option(MEGRAY_WITH_NCCL "" ON)
 option(MEGRAY_WITH_UCX "" OFF)
-option(MEGRAY_WITH_RCCL "" OFF)
 option(MEGRAY_WITH_TEST "Enable test for MegRay." OFF)
 set(MEGRAY_LOG_LEVEL 2 CACHE STRING "MegRay log level")
+
+# if RCCL_PATH is specified, force open MEGRAY_WITH_RCCL
+cmake_dependent_option(MEGRAY_WITH_RCCL "Build with rccl" OFF "NOT DEFINED RCCL_PATH;NOT DEFINED ENV{RCCL_PATH}" ON)
 
 if(MEGRAY_WITH_NCCL OR MEGRAY_WITH_UCX)
     set(MEGRAY_WITH_CUDA ON)
@@ -62,18 +64,18 @@ if(${MEGRAY_WITH_CUDA})
 endif()
 
 if(${MEGRAY_WITH_HIP})
-    if(NOT DEFINED ROCM_PATH)
-        set(ROCM_PATH $ENV{ROCM_PATH} CACHE STRING "")
-    endif()
-
-    if(NOT DEFINED ROCM_PATH)
-        set(ROCM_PATH /opt/rocm)
+    if(NOT DEFINED HIP_PATH)
+        set(DEFAULT_HIP_PATH "/opt/rocm/hip")
+        if (DEFINED $ENV{HIP_PATH})
+            set(DEFAULT_HIP_PATH $ENV{HIP_PATH})
+        endif()
+        set(HIP_PATH ${DEFAULT_HIP_PATH} CACHE STRING "")
     endif()
 
     list(APPEND CMAKE_PREFIX_PATH
-                ${ROCM_PATH}
-                ${ROCM_PATH}/hip
-                ${ROCM_PATH}/hcc)
+                ${HIP_PATH}/../
+                ${HIP_PATH}
+                ${HIP_PATH}/../hcc)
     find_package(HIP REQUIRED)
 
     execute_process(

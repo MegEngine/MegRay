@@ -12,7 +12,7 @@
 
 #include "communicator.h"
 
-#include "nccl.h"
+#include "rccl.h"
 
 #include "megray/hip_context.h"
 #include "utils.h"

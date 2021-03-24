@@ -14,7 +14,7 @@
 
 #include <iostream>
 
-#include "nccl.h"
+#include "rccl.h"
 
 #include "megray/common.h"
 
