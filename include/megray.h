@@ -27,8 +27,8 @@
 namespace MegRay {
 
 /*!
- * get a communicator implemented with nccl or ucx
- * return std::shared_ptr<NcclCommunicator> or std::shared_ptr<UcxCommunicator>
+ * get a communicator implemented with nccl or shm
+ * return std::shared_ptr<NcclCommunicator> or std::shared_ptr<ShmCommunicator>
  */
 std::shared_ptr<Communicator> get_communicator(uint32_t nranks, uint32_t rank,
                                                Backend backend);

@@ -23,89 +23,42 @@
 
 #include "test_base.h"
 
+#define TEST_COMMUNICATOR_INIT(NAME)                                         \
+    TEST(Test##NAME##Communicator, Init) {                                   \
+        auto type = MegRay::MEGRAY_##NAME;                                   \
+        const int nranks = 3;                                                \
+        const int port = MegRay::get_free_port();                            \
+        auto ret = MegRay::create_server(nranks, port);                      \
+        ASSERT_EQ(MegRay::MEGRAY_OK, ret);                                   \
+        auto run = [&](int rank) {                                           \
+            get_context_trait(get_preferred_context(type)).set_device(rank); \
+            auto comm = MegRay::get_communicator(nranks, rank, type);        \
+            ASSERT_EQ(MegRay::MEGRAY_OK, comm->init("localhost", port));     \
+        };                                                                   \
+        std::vector<std::thread> threads;                                    \
+        for (size_t i = 0; i < nranks; i++) {                                \
+            threads.push_back(std::thread(run, i));                          \
+        }                                                                    \
+        for (size_t i = 0; i < nranks; i++) {                                \
+            threads[i].join();                                               \
+        }                                                                    \
+    }
+
 #ifdef MEGRAY_WITH_NCCL
-
-TEST(TestNcclCommunicator, Init) {
-    auto type = MegRay::MEGRAY_NCCL;
-
-    const int nranks = 3;
-    const int port = MegRay::get_free_port();
-    auto ret = MegRay::create_server(nranks, port);
-    ASSERT_EQ(MegRay::MEGRAY_OK, ret);
-
-    auto run = [&](int rank) {
-        get_context_trait(get_preferred_context(type)).set_device(rank);
-        auto comm = MegRay::get_communicator(nranks, rank, MegRay::MEGRAY_NCCL);
-        ASSERT_EQ(MegRay::MEGRAY_OK, comm->init("localhost", port));
-    };
-
-    std::vector<std::thread> threads;
-    for (size_t i = 0; i < nranks; i++) {
-        threads.push_back(std::thread(run, i));
-    }
-
-    for (size_t i = 0; i < nranks; i++) {
-        threads[i].join();
-    }
-}
-
+TEST_COMMUNICATOR_INIT(NCCL)
 #endif  // MEGRAY_WITH_NCCL
 
 #ifdef MEGRAY_WITH_UCX
-
-TEST(TestUcxCommunicators, Init) {
-    auto type = MegRay::MEGRAY_UCX;
-
-    const int nranks = 3;
-    const int port = MegRay::get_free_port();
-    auto ret = MegRay::create_server(nranks, port);
-    ASSERT_EQ(MegRay::MEGRAY_OK, ret);
-
-    auto run = [&](int rank) {
-        get_context_trait(get_preferred_context(type)).set_device(rank);
-        auto comm = MegRay::get_communicator(nranks, rank, type);
-        ASSERT_EQ(MegRay::MEGRAY_OK, comm->init("localhost", port));
-    };
-
-    std::vector<std::thread> threads;
-    for (int i = 0; i < nranks; i++) {
-        threads.push_back(std::thread(run, i));
-    }
-
-    for (int i = 0; i < nranks; i++) {
-        threads[i].join();
-    }
-}
-
+TEST_COMMUNICATOR_INIT(UCX)
 #endif  // MEGRAY_WITH_UCX
 
 #ifdef MEGRAY_WITH_RCCL
-
-TEST(TestRcclCommunicator, Init) {
-    auto type = MegRay::MEGRAY_RCCL;
-
-    const int nranks = 3;
-    const int port = MegRay::get_free_port();
-    auto ret = MegRay::create_server(nranks, port);
-    ASSERT_EQ(MegRay::MEGRAY_OK, ret);
-
-    auto run = [&](int rank) {
-        get_context_trait(get_preferred_context(type)).set_device(rank);
-        auto comm = MegRay::get_communicator(nranks, rank, type);
-        ASSERT_EQ(MegRay::MEGRAY_OK, comm->init("localhost", port));
-    };
-
-    std::vector<std::thread> threads;
-    for (size_t i = 0; i < nranks; i++) {
-        threads.push_back(std::thread(run, i));
-    }
-
-    for (size_t i = 0; i < nranks; i++) {
-        threads[i].join();
-    }
-}
-
+TEST_COMMUNICATOR_INIT(RCCL)
 #endif  // MEGRAY_WITH_RCCL
+
+#ifdef MEGRAY_WITH_SHM
+TEST_COMMUNICATOR_INIT(SHM)
+#endif  // MEGRAY_WITH_SHM
 
 TEST(TestOpr, SendRecv) {
     std::string msg("test_message");
@@ -132,13 +85,13 @@ TEST(TestOpr, SendRecv) {
         void* ptr = trait.alloc(len);
 
         if (rank == 0) {  // send
-            trait.memcpy_h2d(ptr, input.data(), len);
+            trait.memcpy_h2d(ptr, input.data(), len, context);
             comm->send(ptr, len * 1, MegRay::MEGRAY_CHAR, 1, context);
             trait.sync_context(context);
         } else {  // recv
             comm->recv(ptr, len * 1, MegRay::MEGRAY_CHAR, 0, context);
+            trait.memcpy_d2h(output.data(), ptr, len, context);
             trait.sync_context(context);
-            trait.memcpy_d2h(output.data(), ptr, len);
         }
     };
 
@@ -176,7 +129,7 @@ TEST(TestOpr, Scatter) {
         if (rank == root) {
             in_ptr = trait.alloc(nranks * recvlen * sizeof(float));
             trait.memcpy_h2d(in_ptr, input.data(),
-                             nranks * recvlen * sizeof(float));
+                             nranks * recvlen * sizeof(float), context);
         } else {
             in_ptr = nullptr;
         }
@@ -186,7 +139,8 @@ TEST(TestOpr, Scatter) {
         ASSERT_EQ(ret, 0);
 
         trait.sync_context(context);
-        trait.memcpy_d2h(output.data(), out_ptr, recvlen * sizeof(float));
+        trait.memcpy_d2h(output.data(), out_ptr, recvlen * sizeof(float),
+                         context);
     };
     run_test_for_all<float>(nranks, inputs, outputs, run);
 }
@@ -218,7 +172,8 @@ TEST(TestOpr, Gather) {
 
         void *in_ptr, *out_ptr;
         in_ptr = trait.alloc(sendlen * sizeof(float));
-        trait.memcpy_h2d(in_ptr, input.data(), sendlen * sizeof(float));
+        trait.memcpy_h2d(in_ptr, input.data(), sendlen * sizeof(float),
+                         context);
 
         if (rank == root) {
             out_ptr = trait.alloc(nranks * sendlen * sizeof(float));
@@ -234,7 +189,7 @@ TEST(TestOpr, Gather) {
 
         if (rank == root) {
             trait.memcpy_d2h(output.data(), out_ptr,
-                             nranks * sendlen * sizeof(float));
+                             nranks * sendlen * sizeof(float), context);
         }
     };
     run_test_for_all<float>(nranks, inputs, outputs, run);
@@ -269,7 +224,8 @@ TEST(TestOpr, AllToAll) {
 
         void *in_ptr, *out_ptr;
         in_ptr = trait.alloc(nranks * len * sizeof(float));
-        trait.memcpy_h2d(in_ptr, input.data(), nranks * len * sizeof(float));
+        trait.memcpy_h2d(in_ptr, input.data(), nranks * len * sizeof(float),
+                         context);
         out_ptr = trait.alloc(nranks * len * sizeof(float));
 
         int ret = comm->all_to_all(in_ptr, out_ptr, len, MegRay::MEGRAY_FLOAT32,
@@ -278,7 +234,8 @@ TEST(TestOpr, AllToAll) {
 
         trait.sync_context(context);
 
-        trait.memcpy_d2h(output.data(), out_ptr, nranks * len * sizeof(float));
+        trait.memcpy_d2h(output.data(), out_ptr, nranks * len * sizeof(float),
+                         context);
     };
     run_test_for_all<float>(nranks, inputs, outputs, run);
 }
@@ -312,7 +269,8 @@ TEST(TestOpr, AllGather) {
         in_ptr = trait.alloc(sendlen * sizeof(float));
         out_ptr = trait.alloc(sendlen * nranks * sizeof(float));
 
-        trait.memcpy_h2d(in_ptr, input.data(), sendlen * sizeof(float));
+        trait.memcpy_h2d(in_ptr, input.data(), sendlen * sizeof(float),
+                         context);
 
         int ret = comm->all_gather(in_ptr, out_ptr, sendlen,
                                    MegRay::MEGRAY_FLOAT32, context);
@@ -320,7 +278,7 @@ TEST(TestOpr, AllGather) {
 
         trait.sync_context(context);
         trait.memcpy_d2h(output.data(), out_ptr,
-                         nranks * sendlen * sizeof(float));
+                         nranks * sendlen * sizeof(float), context);
     };
     run_test_for_all<float>(nranks, inputs, outputs, run);
 }
@@ -346,14 +304,16 @@ TEST(TestOpr, AllReduce) {
             in_ptr = trait.alloc(len * sizeof(float));
             out_ptr = trait.alloc(len * sizeof(float));
 
-            trait.memcpy_h2d(in_ptr, input.data(), len * sizeof(float));
+            trait.memcpy_h2d(in_ptr, input.data(), len * sizeof(float),
+                             context);
 
             int ret = comm->all_reduce(in_ptr, out_ptr, len,
                                        MegRay::MEGRAY_FLOAT32, op, context);
             ASSERT_EQ(ret, 0);
 
             trait.sync_context(context);
-            trait.memcpy_d2h(output.data(), out_ptr, len * sizeof(float));
+            trait.memcpy_d2h(output.data(), out_ptr, len * sizeof(float),
+                             context);
         };
         return run;
     };
@@ -421,14 +381,15 @@ TEST(TestOpr, ReduceScatterSum) {
             out_ptr = trait.alloc(recvlen * sizeof(float));
 
             trait.memcpy_h2d(in_ptr, input.data(),
-                             nranks * recvlen * sizeof(float));
+                             nranks * recvlen * sizeof(float), context);
 
             int ret = comm->reduce_scatter(in_ptr, out_ptr, recvlen,
                                            MegRay::MEGRAY_FLOAT32, op, context);
             ASSERT_EQ(ret, 0);
 
             trait.sync_context(context);
-            trait.memcpy_d2h(output.data(), out_ptr, recvlen * sizeof(float));
+            trait.memcpy_d2h(output.data(), out_ptr, recvlen * sizeof(float),
+                             context);
         };
         return run;
     };
@@ -505,14 +466,14 @@ TEST(TestOpr, Broadcast) {
         in_ptr = trait.alloc(len * sizeof(float));
         out_ptr = trait.alloc(len * sizeof(float));
 
-        trait.memcpy_h2d(in_ptr, input.data(), len * sizeof(float));
+        trait.memcpy_h2d(in_ptr, input.data(), len * sizeof(float), context);
 
         int ret = comm->broadcast(in_ptr, out_ptr, len, MegRay::MEGRAY_FLOAT32,
                                   root, context);
         ASSERT_EQ(ret, 0);
 
         trait.sync_context(context);
-        trait.memcpy_d2h(output.data(), out_ptr, len * sizeof(float));
+        trait.memcpy_d2h(output.data(), out_ptr, len * sizeof(float), context);
     };
 
     run_test_for_all<float>(nranks, inputs, outputs, run);
@@ -543,7 +504,8 @@ TEST(TestOpr, ReduceSum) {
                 out_ptr = trait.alloc(len * sizeof(float));
             }
 
-            trait.memcpy_h2d(in_ptr, input.data(), len * sizeof(float));
+            trait.memcpy_h2d(in_ptr, input.data(), len * sizeof(float),
+                             context);
 
             int ret = comm->reduce(in_ptr, out_ptr, len, MegRay::MEGRAY_FLOAT32,
                                    op, root, context);
@@ -551,7 +513,8 @@ TEST(TestOpr, ReduceSum) {
 
             trait.sync_context(context);
             if (rank == root) {
-                trait.memcpy_d2h(output.data(), out_ptr, len * sizeof(float));
+                trait.memcpy_d2h(output.data(), out_ptr, len * sizeof(float),
+                                 context);
             }
         };
         return run;

@@ -12,8 +12,6 @@
 
 #pragma once
 
-#include <memory>
-
 #include "megray.h"
 
 namespace MegRay {
@@ -24,8 +22,10 @@ struct ContextTrait {
     void (*free)(void* ptr);
     std::shared_ptr<Context> (*make_context)();
     void (*sync_context)(std::shared_ptr<Context> context);
-    void (*memcpy_h2d)(void* dst, void* src, size_t len);
-    void (*memcpy_d2h)(void* dst, void* src, size_t len);
+    void (*memcpy_h2d)(void* dst, void* src, size_t len,
+                       std::shared_ptr<Context> context);
+    void (*memcpy_d2h)(void* dst, void* src, size_t len,
+                       std::shared_ptr<Context> context);
 };
 
 void* alloc_cuda(size_t size);
@@ -33,16 +33,20 @@ void set_device_cuda(size_t device);
 void free_cuda(void* ptr);
 std::shared_ptr<Context> make_context_cuda();
 void sync_context_cuda(std::shared_ptr<Context> context);
-void memcpy_h2d_cuda(void* dst, void* src, size_t len);
-void memcpy_d2h_cuda(void* dst, void* src, size_t len);
+void memcpy_h2d_cuda(void* dst, void* src, size_t len,
+                     std::shared_ptr<Context> context);
+void memcpy_d2h_cuda(void* dst, void* src, size_t len,
+                     std::shared_ptr<Context> context);
 
 void* alloc_hip(size_t size);
 void set_device_hip(size_t device);
 void free_hip(void* ptr);
 std::shared_ptr<Context> make_context_hip();
 void sync_context_hip(std::shared_ptr<Context> context);
-void memcpy_h2d_hip(void* dst, void* src, size_t len);
-void memcpy_d2h_hip(void* dst, void* src, size_t len);
+void memcpy_h2d_hip(void* dst, void* src, size_t len,
+                    std::shared_ptr<Context> ctx);
+void memcpy_d2h_hip(void* dst, void* src, size_t len,
+                    std::shared_ptr<Context> ctx);
 
 static ContextTrait context_trait_array[MEGRAY_CTX_COUNT] = {
         {},
@@ -58,6 +62,8 @@ static ContextType get_preferred_context(Backend backend) {
         case MEGRAY_RCCL:
             return MEGRAY_CTX_HIP;
         case MEGRAY_UCX:
+            return MEGRAY_CTX_CUDA;
+        case MEGRAY_SHM:
             return MEGRAY_CTX_CUDA;
         default:
             return MEGRAY_CTX_DEFAULT;

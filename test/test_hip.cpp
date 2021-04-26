@@ -15,6 +15,7 @@
 #include "test_utils.h"
 
 #include <cassert>
+#include <memory>
 
 namespace MegRay {
 
@@ -47,11 +48,13 @@ void sync_context_hip(std::shared_ptr<Context> context) {
             static_cast<HipContext*>(context.get())->get_stream()));
 }
 
-void memcpy_h2d_hip(void* dst, void* src, size_t len) {
+void memcpy_h2d_hip(void* dst, void* src, size_t len,
+                    std::shared_ptr<Context> ctx) {
     HIP_ASSERT(hipMemcpy(dst, src, len, hipMemcpyHostToDevice));
 }
 
-void memcpy_d2h_hip(void* dst, void* src, size_t len) {
+void memcpy_d2h_hip(void* dst, void* src, size_t len,
+                    std::shared_ptr<Context> ctx) {
     HIP_ASSERT(hipMemcpy(dst, src, len, hipMemcpyDeviceToHost));
 }
 
@@ -66,8 +69,10 @@ std::shared_ptr<Context> make_context_hip() {
     return nullptr;
 }
 void sync_context_hip(std::shared_ptr<Context> context) {}
-void memcpy_h2d_hip(void* dst, void* src, size_t len) {}
-void memcpy_d2h_hip(void* dst, void* src, size_t len) {}
+void memcpy_h2d_hip(void* dst, void* src, size_t len,
+                    std::shared_ptr<Context> ctx) {}
+void memcpy_d2h_hip(void* dst, void* src, size_t len,
+                    std::shared_ptr<Context> ctx) {}
 
 #endif  // MEGRAY_WITH_HIP
 

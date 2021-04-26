@@ -25,3 +25,9 @@ if(${MEGRAY_WITH_RCCL})
     add_subdirectory(rccl)
     target_link_libraries(megray PUBLIC megray_rccl)
 endif()
+
+if(${MEGRAY_WITH_SHM})
+    add_subdirectory(shm)
+    target_link_libraries(megray PUBLIC megray_shm)
+endif()
+

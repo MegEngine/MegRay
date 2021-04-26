@@ -99,7 +99,8 @@ typedef enum {
     MEGRAY_NCCL = 0,
     MEGRAY_UCX = 1,
     MEGRAY_RCCL = 2,
-    MEGRAY_BACKEND_COUNT = 3,
+    MEGRAY_SHM = 3,
+    MEGRAY_BACKEND_COUNT = 4,
 } Backend;
 
 typedef enum {

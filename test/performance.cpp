@@ -265,6 +265,10 @@ void init_maps(Arguments args) {
     if (args.backends == "ALL" || args.backends == "RCCL")
         backends.emplace_back("RCCL", MegRay::MEGRAY_RCCL);
 #endif
+#ifdef MEGRAY_WITH_SHM
+    if (args.backends == "ALL" || args.backends == "SHM")
+        backends.emplace_back("SHM", MegRay::MEGRAY_SHM);
+#endif
 
     if (args.func_select == "ALL") {
         funcs.emplace_back("send_recv", run_send_recv);
@@ -389,7 +393,7 @@ void show_help(const char* argv0) {
                "        -e[string]                        Choose a backend for "
                "communication\n"
                "                                          One of: ALL, NCCL, "
-               "RCCL, UCX\n"
+               "RCCL, UCX, SHM\n"
                "        -f[string]                        Select function: "
                "ALL, all_reduce,\n"
                "                                          send_recv, scatter, "

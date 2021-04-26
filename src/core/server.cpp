@@ -120,8 +120,11 @@ void server_thread(int listenfd, uint32_t nranks) {
     while (true) {
         // receive a request from rank 0
         uint32_t request_id;
-        SYS_ASSERT(recv(conns[0], &request_id, sizeof(uint32_t), MSG_WAITALL),
-                   -1);
+        auto ret = recv(conns[0], &request_id, sizeof(uint32_t), MSG_WAITALL);
+        // recv 0 btyes means socket close
+        if (ret == 0)
+            break;
+        MEGRAY_ASSERT(ret != -1, "socket recv msg error");
 
         if (request_id == 1) {
             serve_barrier(nranks, conns);

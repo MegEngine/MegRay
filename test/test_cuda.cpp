@@ -10,6 +10,7 @@
  * implied.
  */
 
+#include <memory>
 #include "megray.h"
 
 #include "test_utils.h"
@@ -45,12 +46,18 @@ void sync_context_cuda(std::shared_ptr<Context> context) {
             static_cast<CudaContext*>(context.get())->get_stream()));
 }
 
-void memcpy_h2d_cuda(void* dst, void* src, size_t len) {
-    CUDA_ASSERT(cudaMemcpy(dst, src, len, cudaMemcpyHostToDevice));
+void memcpy_h2d_cuda(void* dst, void* src, size_t len,
+                     std::shared_ptr<Context> ctx) {
+    cudaStream_t stream = static_cast<CudaContext*>(ctx.get())->get_stream();
+    CUDA_ASSERT(cudaMemcpyAsync(dst, src, len, cudaMemcpyHostToDevice, stream));
+    CUDA_ASSERT(cudaStreamSynchronize(stream));
 }
 
-void memcpy_d2h_cuda(void* dst, void* src, size_t len) {
-    CUDA_ASSERT(cudaMemcpy(dst, src, len, cudaMemcpyDeviceToHost));
+void memcpy_d2h_cuda(void* dst, void* src, size_t len,
+                     std::shared_ptr<Context> ctx) {
+    cudaStream_t stream = static_cast<CudaContext*>(ctx.get())->get_stream();
+    CUDA_ASSERT(cudaMemcpyAsync(dst, src, len, cudaMemcpyDeviceToHost, stream));
+    CUDA_ASSERT(cudaStreamSynchronize(stream));
 }
 
 #else  // MEGRAY_WITH_CUDA
@@ -64,8 +71,10 @@ std::shared_ptr<Context> make_context_cuda() {
     return nullptr;
 }
 void sync_context_cuda(std::shared_ptr<Context> context) {}
-void memcpy_h2d_cuda(void* dst, void* src, size_t len) {}
-void memcpy_d2h_cuda(void* dst, void* src, size_t len) {}
+void memcpy_h2d_cuda(void* dst, void* src, size_t len,
+                     std::shared_ptr<Context> ctx) {}
+void memcpy_d2h_cuda(void* dst, void* src, size_t len,
+                     std::shared_ptr<Context> ctx) {}
 
 #endif  // MEGRAY_WITH_CUDA
 
