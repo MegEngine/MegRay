@@ -28,17 +28,21 @@ void ShmCommunicator::_shm_barrier_sum(volatile int* mutex) {
 };
 
 void ShmCommunicator::_shm_barrier(volatile int* mutex) {
-    int count = 0;
-    int start = mutex[m_rank];
-    mutex[m_rank] += 1;
-    while (1) {
-        count = 0;
-        for (size_t i = 0; i < m_nranks; i++) {
-            if (mutex[i] >= start + 1)
-                count++;
+    if (m_rank == 0) {
+        for (size_t i = 1;i < m_nranks;i++) {
+            while(mutex[i]!=1);
         }
-        if (count == m_nranks)
-            break;
+        mutex[0] = m_nranks;
+        for (size_t i = 1;i < m_nranks;i++) {
+            while(mutex[i]!=2);
+        }
+        mutex[0] = 0;
+    } else {
+        mutex[m_rank] = 1;
+        while(mutex[0]!=m_nranks);
+        mutex[m_rank] = 2;
+        while(mutex[0]!=0);
+        mutex[m_rank] = 0;
     }
 };
 

@@ -87,7 +87,7 @@ Status ShmCommunicator::_shm_reduce(const void* sendbuff, void* recvbuff,
         mutex[m_rank] = i - 1;
         work_rank = next_rank;
     }
-    _shm_barrier(mutex);
+    m_client->barrier();
     if (m_rank == root) {
         // copy output and free workspace
         CUDA_ASSERT(cudaMemcpyAsync(recvbuff, shmadd, len * size,

@@ -14,14 +14,9 @@
 
 #include <cstdint>
 #include "cuda_runtime.h"
+#include "megray/common.h"
 
 namespace MegRay {
-
-// launch cuda kernel for reduce operations
-void reduce(void* i0, void* i1, void* o, size_t len, DType dtype, ReduceOp op,
-            cudaStream_t stream);
-
-void set_signal(volatile int* ptr, int sig, cudaStream_t stream);
 
 inline uint32_t ring_add(uint32_t n, uint32_t delta, uint32_t m) {
     return (n + delta) % m;
@@ -30,6 +25,9 @@ inline uint32_t ring_add(uint32_t n, uint32_t delta, uint32_t m) {
 inline uint32_t ring_sub(uint32_t n, uint32_t delta, uint32_t m) {
     return (n + m - delta % m) % m;
 }
+
+void stream_set_signal(volatile int* ptr, int x, cudaStream_t stream);
+void stream_wait_signal(volatile int* ptr, int x, cudaStream_t stream);
 
 void cpu_reduce(void* dst, void* a, void* b, DType dtype, ReduceOp op, int len);
 }  // namespace MegRay

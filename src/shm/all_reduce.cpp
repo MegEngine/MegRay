@@ -35,65 +35,10 @@
 
 namespace MegRay {
 
-template <typename T>
-void cpu_reduce_kernel(T* dst, T* a, T* b, ReduceOp op, int len) {
-    switch (op) {
-        case MEGRAY_SUM:
-            for (size_t i = 0; i < len; i++) {
-                dst[i] = a[i] + b[i];
-            }
-            break;
-        case MEGRAY_MAX:
-            for (size_t i = 0; i < len; i++) {
-                dst[i] = std::max(a[i], b[i]);
-            }
-            break;
-        case MEGRAY_MIN:
-            for (size_t i = 0; i < len; i++) {
-                dst[i] = std::min(a[i], b[i]);
-            }
-            break;
-        default:
-            MEGRAY_THROW("unsuport op type");
-    }
-}
-
-void cpu_reduce(void* dst, void* a, void* b, DType dtype, ReduceOp op,
-                int len) {
-    switch (dtype) {
-        case MEGRAY_INT8:
-            cpu_reduce_kernel<int8_t>((int8_t*)dst, (int8_t*)a, (int8_t*)b, op,
-                                      len);
-            break;
-        case MEGRAY_UINT8:
-            cpu_reduce_kernel<uint8_t>((uint8_t*)dst, (uint8_t*)a, (uint8_t*)b,
-                                       op, len);
-            break;
-        case MEGRAY_INT32:
-            cpu_reduce_kernel<int32_t>((int32_t*)dst, (int32_t*)a, (int32_t*)b,
-                                       op, len);
-            break;
-        case MEGRAY_UINT32:
-            cpu_reduce_kernel<uint32_t>((uint32_t*)dst, (uint32_t*)a,
-                                        (uint32_t*)b, op, len);
-            break;
-        case MEGRAY_INT64:
-            cpu_reduce_kernel<int64_t>((int64_t*)dst, (int64_t*)a, (int64_t*)b,
-                                       op, len);
-            break;
-        case MEGRAY_FLOAT32:
-            cpu_reduce_kernel<float>((float*)dst, (float*)a, (float*)b, op,
-                                     len);
-            break;
-        default:
-            MEGRAY_THROW("unsuport dtype");
-    }
-}
-
 Status ShmCommunicator::_shm_all_reduce(const void* sendbuff, void* recvbuff,
                                         size_t len, DType dtype, ReduceOp op,
                                         std::shared_ptr<Context> ctx) {
-    // get cuda stream
+    // prepare
     size_t k = 2;
     size_t chunks = m_nranks * k;
     MEGRAY_ASSERT(ctx->type() == MEGRAY_CTX_CUDA,
@@ -101,7 +46,7 @@ Status ShmCommunicator::_shm_all_reduce(const void* sendbuff, void* recvbuff,
     size_t size = get_dtype_size(dtype);
     size_t buff_size = len * size;
 
-    void* shmadd = alloc_shm(buff_size * 2 + m_nranks * sizeof(int));
+    void* shmadd = alloc_shm(buff_size * 2 + m_nranks * sizeof(int) * 4);
 
     cudaStream_t stream = static_cast<CudaContext*>(ctx.get())->get_stream();
 
@@ -122,49 +67,62 @@ Status ShmCommunicator::_shm_all_reduce(const void* sendbuff, void* recvbuff,
     for (size_t i = 0; i < k; i++) {
         tmp_size += chunk_sizes[m_rank * k + i];
     }
-    CUDA_ASSERT(cudaMemcpyAsync((char*)shmadd + offsets[m_rank * k],
+
+    Op all_reduce_op;
+    all_reduce_op.dtype = dtype;
+    all_reduce_op.k = k;
+    all_reduce_op.len = len;
+    all_reduce_op.op = op;
+    all_reduce_op.recvbuff = recvbuff;
+    all_reduce_op.sendbuff = sendbuff;
+    all_reduce_op.op_begin = (volatile int*)shmadd+m_rank;
+    all_reduce_op.shm_mutex = (int*)shmadd + m_nranks;
+    all_reduce_op.send_signal = (int*)shmadd + m_nranks*2;
+    all_reduce_op.reduce_signal = (int*)shmadd + m_nranks*3;
+    all_reduce_op.shm_buffer = (int*)shmadd + m_nranks*4;
+    m_oplist.push(all_reduce_op);
+
+    // launch kernel
+
+    // wait begin
+    stream_wait_signal(all_reduce_op.op_begin, 1, stream);
+    stream_set_signal(all_reduce_op.op_begin, 0, stream);
+    CUDA_ASSERT(cudaMemcpyAsync((char*)all_reduce_op.shm_buffer + offsets[m_rank * k],
                                 (char*)sendbuff + offsets[m_rank * k],
                                 tmp_size * size, cudaMemcpyDeviceToHost,
                                 stream));
-    CUDA_ASSERT(cudaStreamSynchronize(stream));
-    int* mutex = (int*)((char*)shmadd + buff_size * 2);
-    mutex[m_rank] = 0;
-    m_client->barrier();
-
-    uint32_t work_rank, next_rank;
+    stream_set_signal(all_reduce_op.send_signal + m_rank, k, stream);
+    stream_set_signal(all_reduce_op.reduce_signal + m_rank, k, stream);
+    uint32_t work_rank;
     work_rank = ring_add(m_rank * k, k, chunks);
-    CUDA_ASSERT(cudaMemcpyAsync((char*)shmadd + buff_size + offsets[work_rank],
-                                (char*)sendbuff + offsets[work_rank],
-                                chunk_sizes[work_rank] * size,
-                                cudaMemcpyDeviceToHost, stream));
     size_t right_rank = ring_add(m_rank, 1, m_nranks);
-    volatile int* right_mutex = mutex + right_rank;
-    // copy i+1 and reduce ith part
-    for (size_t i = k; i < chunks; i++) {
-        CUDA_ASSERT(cudaStreamSynchronize(stream));
-        while (*right_mutex < i - k)
-            ;
-        next_rank = ring_add(work_rank, 1, chunks);
-        if (i != chunks - 1) {
-            CUDA_ASSERT(cudaMemcpyAsync(
-                    (char*)shmadd + buff_size + offsets[next_rank],
-                    (char*)sendbuff + offsets[next_rank],
-                    chunk_sizes[next_rank] * size, cudaMemcpyDeviceToHost,
-                    stream));
-        }
-        void* dst = (void*)((char*)shmadd + offsets[work_rank]);
-        void* a = (void*)((char*)shmadd + offsets[work_rank]);
-        void* b = (void*)((char*)shmadd + buff_size + offsets[work_rank]);
-        cpu_reduce(dst, a, b, dtype, op, chunk_sizes[work_rank]);
-        mutex[m_rank] = i - 1;
-        work_rank = next_rank;
+    // wait last reduction done, copy ith part
+    for (size_t i = k+1; i <= chunks; i++) {
+        stream_wait_signal(all_reduce_op.reduce_signal + right_rank, i-k, stream);
+        CUDA_ASSERT(cudaMemcpyAsync(
+                (char*)all_reduce_op.shm_buffer + buff_size + offsets[work_rank],
+                (char*)sendbuff + offsets[work_rank],
+                chunk_sizes[work_rank] * size, cudaMemcpyDeviceToHost,
+                stream));
+        stream_set_signal(all_reduce_op.send_signal + m_rank, i, stream);
+        work_rank = ring_add(work_rank, 1, chunks);
     }
-    _shm_barrier(mutex);
-    // copy output and free workspace
-    CUDA_ASSERT(cudaMemcpyAsync(recvbuff, shmadd, len * size,
-                                cudaMemcpyHostToDevice, stream));
-    m_client->barrier();
-    CUDA_ASSERT(cudaStreamSynchronize(stream));
+    for (int i = 0;i < k;i++) {
+        work_rank = ring_sub(m_rank*k+i, k, chunks);
+        int now_rank = m_rank;
+        for (int j = 0;j < m_nranks;j++) {
+            stream_wait_signal(all_reduce_op.reduce_signal + now_rank, chunks-k+i+1, stream);
+            CUDA_ASSERT(cudaMemcpyAsync(
+                (char*)recvbuff + offsets[work_rank],
+                (char*)all_reduce_op.shm_buffer + offsets[work_rank],
+                chunk_sizes[work_rank] * size, cudaMemcpyHostToDevice,
+                stream));
+            work_rank = ring_add(work_rank, k, chunks);
+            now_rank = ring_add(now_rank, 1, m_nranks);
+        }
+    }
+    stream_set_signal(all_reduce_op.send_signal + m_rank, chunks+1, stream);
+
     return MEGRAY_OK;
 }
 

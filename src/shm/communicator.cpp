@@ -16,19 +16,72 @@
 #include <memory>
 #include <mutex>
 #include "megray/cuda_context.h"
+#include "megray/debug.h"
+#include "utils.h"
 
 namespace MegRay {
+// for allreduce only for now
+void ShmCommunicator::persistent_thread() {
+    while(1) {
+        auto op = m_oplist.pop();
+        if (op.is_nop) break;
+        // reset shm signal
+        op.send_signal[m_rank] = 0;
+        op.reduce_signal[m_rank] = 0;
+        _shm_barrier(op.shm_mutex);
+        *(op.op_begin) = 1;
+
+        // compute chunk sizes
+        size_t size = get_dtype_size(op.dtype);
+        size_t buff_size = op.len * size;
+        size_t chunks = m_nranks * op.k;
+        size_t quotient = op.len / chunks;
+        size_t remainder = op.len % chunks;
+        std::vector<size_t> chunk_sizes(chunks, quotient);
+        for (size_t i = 0; i < remainder; i++) {
+            chunk_sizes[i]++;
+        }
+
+        // compute chunk offsets
+        std::vector<size_t> offsets(chunks, 0);
+        for (size_t i = 1; i < chunks; i++) {
+            offsets[i] = offsets[i - 1] + chunk_sizes[i - 1] * size;
+        }
+        size_t tmp_size = 0;
+        for (size_t i = 0; i < op.k; i++) {
+            tmp_size += chunk_sizes[m_rank * op.k + i];
+        }
+
+        size_t work_rank = ring_add(m_rank*op.k, op.k, chunks);
+        for (size_t i = op.k+1;i <= chunks;i++) {
+            while(op.send_signal[m_rank]<i);
+            cpu_reduce((char*)op.shm_buffer + offsets[work_rank],
+                       (char*)op.shm_buffer + offsets[work_rank],
+                       (char*)op.shm_buffer + buff_size + offsets[work_rank],
+                       op.dtype, op.op, chunk_sizes[work_rank]);
+            if (i == chunks) _shm_barrier((volatile int*)op.shm_mutex);
+            op.reduce_signal[m_rank] = i;
+            work_rank = ring_add(work_rank, 1, chunks);
+        }
+
+        while(op.send_signal[m_rank] <= chunks);
+        // kernal end
+        _shm_barrier(op.shm_mutex);
+    }
+}
 
 ShmCommunicator::ShmCommunicator(int ranks, int rank)
         : Communicator(ranks, rank) {
     alloc_cuda_stream();
+    m_persistent_thread = std::thread(&ShmCommunicator::persistent_thread, this);
 }
 
 void ShmCommunicator::free_shm() {
-    CUDA_ASSERT(cudaHostUnregister(m_shmadd));
-    int ret = shmdt(m_shmadd);
-    shmctl(m_shmid, IPC_RMID, NULL);
-    m_shmsize = 0;
+    for (auto shm:m_shm_list) {
+        CUDA_ASSERT(cudaHostUnregister(shm.addr));
+        int ret = shmdt(shm.addr);
+        shmctl(shm.shmid, IPC_RMID, NULL);
+    }
 }
 
 Status ShmCommunicator::do_init() {
@@ -91,30 +144,36 @@ Status ShmCommunicator::_isend(const void* sendbuff, size_t len, uint32_t rank,
 }
 
 void* ShmCommunicator::alloc_shm(size_t size) {
-    if (m_shmsize >= size) {
-        return m_shmadd;
+    size_t max_size = 0;
+    if (m_shm_list.size() > 0) {
+        max_size = m_shm_list.back().size;
     }
-    if (m_shmsize != 0)
-        free_shm();
-    m_shmsize = size;
+    if (size <= max_size) return m_shm_list.back().addr;
+    if (size > max_size && size < max_size*2) {
+        size = max_size*2;
+    }
+    Shm tmp_shm;
     // todo random num
-    m_shmkey = random();
-    m_client->broadcast(&m_shmkey, &m_shmkey, sizeof(m_shmkey), 0);
-    m_shmid = shmget(m_shmkey, size, IPC_CREAT | 0666);
-    if (m_shmid < 0) {
+    tmp_shm.key = random();
+    tmp_shm.size = size;
+    m_client->broadcast(&tmp_shm.key, &tmp_shm.key, sizeof(tmp_shm.key), 0);
+    tmp_shm.shmid = shmget(tmp_shm.key, size, IPC_CREAT | 0666);
+    if (tmp_shm.shmid < 0) {
         m_client->barrier();
         if (m_rank == 0) {
-            m_shmid = shmget(m_shmkey, 1, IPC_CREAT | 0666);
-            shmctl(m_shmid, IPC_RMID, NULL);
+            int shmid = shmget(tmp_shm.key, 1, IPC_CREAT | 0666);
+            shmctl(shmid, IPC_RMID, NULL);
         }
         m_client->barrier();
-        m_shmid = shmget(m_shmkey, size, IPC_CREAT | 0666);
+        tmp_shm.shmid = shmget(tmp_shm.key, size, IPC_CREAT | 0666);
     }
-    MEGRAY_ASSERT(m_shmid >= 0, "shmget failed, error code %d", errno);
-    m_shmadd = shmat(m_shmid, NULL, 0);
-    CUDA_ASSERT(cudaHostRegister(m_shmadd, size, cudaHostRegisterMapped));
+    MEGRAY_ASSERT(tmp_shm.shmid >= 0, "shmget failed, error code %d", errno);
+    tmp_shm.addr = shmat(tmp_shm.shmid, NULL, 0);
+    CUDA_ASSERT(cudaHostRegister(tmp_shm.addr, size, cudaHostRegisterMapped));
+    memset(tmp_shm.addr, 0, size);
     m_client->barrier();
-    return m_shmadd;
+    m_shm_list.push_back(tmp_shm);
+    return tmp_shm.addr;
 }
 
 void ShmCommunicator::barrier_streams_local_process() {
@@ -146,7 +205,10 @@ ShmCommunicator::~ShmCommunicator() {
     if (stream_vec.size() > 0) {
         free_cuda_stream();
     }
-    if (m_shmsize > 0)
-        free_shm();
+    Op op;
+    op.is_nop = true;
+    m_oplist.push(op);
+    m_persistent_thread.join();
+    free_shm();
 }
 }  // namespace MegRay

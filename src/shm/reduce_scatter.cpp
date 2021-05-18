@@ -87,7 +87,7 @@ Status ShmCommunicator::_shm_reduce_scatter(const void* sendbuff,
         mutex[m_rank] = i - 1;
         work_rank = next_rank;
     }
-    _shm_barrier(mutex);
+    m_client->barrier();
     CUDA_ASSERT(cudaMemcpyAsync(
             recvbuff, (uint8_t*)shmadd + m_rank * recvlen * size,
             recvlen * size, cudaMemcpyHostToDevice, stream));
