@@ -39,6 +39,7 @@ if(${MEGRAY_WITH_CUDA} AND ${MEGRAY_WITH_HIP})
 endif()
 
 if(${MEGRAY_WITH_CUDA})
+    find_package(CUDA)
     enable_language(CUDA)
     get_filename_component(CUDA_HOME ${CMAKE_CUDA_COMPILER} DIRECTORY)
     get_filename_component(CUDA_HOME ${CUDA_HOME} DIRECTORY)

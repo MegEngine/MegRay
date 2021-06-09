@@ -16,9 +16,12 @@
 #include <cstring>
 #include <string>
 #include <thread>
-#include "../src/shm/shm_ipc.h"
 #include "megray.h"
 #include "megray/common.h"
+
+#ifdef MEGRAY_WITH_SHM
+
+#include "../src/shm/shm_ipc.h"
 
 TEST(TestShm, write) {
     std::string test = "hello world!";
@@ -78,3 +81,5 @@ TEST(TestShm, multi_thread_send_recv) {
         th.join();
     }
 }
+
+#endif
