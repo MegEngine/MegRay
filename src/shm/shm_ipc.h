@@ -39,8 +39,8 @@ public:
     // an static check function
     // which is used to check whether the protocal
     // is initialize
-    static bool ProtocalValid(ProtocalHead* head) {
-        return strncasecmp(head->version, MEGRAY_VERSION,
+    static bool ProtocalValid(volatile ProtocalHead* head) {
+        return strncasecmp((char*)head->version, MEGRAY_VERSION,
                            strlen(MEGRAY_VERSION)) == 0;
     }
 };

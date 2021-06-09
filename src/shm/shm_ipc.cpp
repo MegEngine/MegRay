@@ -89,7 +89,7 @@ int ShmMemory::allocate() {
 
 void ShmMemory::wait_send_done_block() {
     while (true) {
-        ProtocalHead* head = (ProtocalHead*)ptr;
+        volatile ProtocalHead* head = (volatile ProtocalHead*)ptr;
         if (ProtocalHead::ProtocalValid(head)) {  // the protocal is done
             if (head->send_finish) {
                 return;
