@@ -10,3 +10,6 @@
 [submodule "third_party/ucx"]
 	path = third_party/ucx
 	url = https://github.com/openucx/ucx.git
+[submodule "third_party/rccl"]
+	path = third_party/rccl
+	url = https://github.com/ROCmSoftwarePlatform/rccl.git
