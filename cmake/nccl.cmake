@@ -40,7 +40,7 @@ target_link_libraries(nccl_device_functions PRIVATE nccl_device_interface)
 set(NCCL_DEVICE_OBJS ${NCCL_DEVICE_OBJS} nccl_device_functions)
 
 # compile host codes and apply device-link
-file(GLOB_RECURSE NCCL_HOST_SRCS CONFIGURE_DEPENDS "${NCCL_SOURCE_DIR}/src/*.cc")
+file(GLOB_RECURSE NCCL_HOST_SRCS "${NCCL_SOURCE_DIR}/src/*.cc")
 add_library(nccl_static STATIC ${NCCL_HOST_SRCS})
 target_include_directories(nccl_static
     PUBLIC "${NCCL_BINARY_DIR}/include" "${CUDA_HOME}/include"
