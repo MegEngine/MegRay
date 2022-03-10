@@ -28,13 +28,23 @@ if (MEGRAY_BUILD_NCCL_WITH_EXTERNAL_SCRIPT)
     get_filename_component(NCCL_BUILD_DIR ${NCCL_BUILD_DIR} ABSOLUTE)
     file(MAKE_DIRECTORY ${NCCL_BUILD_DIR}/include)
 
-    add_custom_command(
-        OUTPUT ${NCCL_LIBRARIES}
-        COMMAND ${MAKE_COMMAND} -j${NCCL_BUILD_THREAD} -C src ${NCCL_BUILD_DIR}/include/nccl.h BUILDDIR=${NCCL_BUILD_DIR}
-        COMMAND ${MAKE_COMMAND} -j${NCCL_BUILD_THREAD} src.build NVCC_GENCODE=${MEGRAY_CUDA_GENCODE} BUILDDIR=${NCCL_BUILD_DIR} CUDA_HOME=${CUDA_HOME}
-        WORKING_DIRECTORY ${NCCL_SOURCE_DIR}
-        VERBATIM
-    )
+    if("${MEGRAY_CUDA_GENCODE}" STREQUAL "" ) # hack for nccl 2-11-4 default nvcc will error
+        add_custom_command(
+            OUTPUT ${NCCL_LIBRARIES}
+            COMMAND ${MAKE_COMMAND} -j${NCCL_BUILD_THREAD} -C src ${NCCL_BUILD_DIR}/include/nccl.h BUILDDIR=${NCCL_BUILD_DIR}
+            COMMAND ${MAKE_COMMAND} -j${NCCL_BUILD_THREAD} src.build  BUILDDIR=${NCCL_BUILD_DIR} CUDA_HOME=${CUDA_HOME}
+            WORKING_DIRECTORY ${NCCL_SOURCE_DIR}
+            VERBATIM
+        )
+    else()
+        add_custom_command(
+            OUTPUT ${NCCL_LIBRARIES}
+            COMMAND ${MAKE_COMMAND} -j${NCCL_BUILD_THREAD} -C src ${NCCL_BUILD_DIR}/include/nccl.h BUILDDIR=${NCCL_BUILD_DIR}
+            COMMAND ${MAKE_COMMAND} -j${NCCL_BUILD_THREAD} src.build NVCC_GENCODE=${MEGRAY_CUDA_GENCODE} BUILDDIR=${NCCL_BUILD_DIR} CUDA_HOME=${CUDA_HOME}
+            WORKING_DIRECTORY ${NCCL_SOURCE_DIR}
+            VERBATIM
+        )
+    endif()
 
     add_custom_target(nccl_build DEPENDS ${NCCL_LIBRARIES})
     add_library(nccl_static STATIC IMPORTED GLOBAL)

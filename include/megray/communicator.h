@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -22,6 +23,7 @@
 
 namespace MegRay {
 
+using BcastCallback = std::function<void(char*, size_t len)>;
 /*!
  * abstract class of MegRay main interface
  * MegRay communicator corresponds to a nccl communicator or a ucp worker
@@ -42,6 +44,7 @@ public:
 
     // establish connection with megray server
     Status init(const char* master_ip, int port);
+    Status init(BcastCallback cb);
 
     // send data to another communicator in the group
     // implemented in the subclass _send()
@@ -55,6 +58,7 @@ public:
 
     // implemented in the subclass and called in init()
     virtual Status do_init() = 0;
+    virtual Status do_init(BcastCallback cb) = 0;
 
     // the length of sendbuff = recvlen * m_nranks
     // the length of recvbuff = recvlen
@@ -98,6 +102,11 @@ public:
     virtual Status reduce(const void* sendbuff, void* recvbuff, size_t len,
                           DType dtype, ReduceOp op, uint32_t root,
                           std::shared_ptr<Context> ctx) = 0;
+    
+    // mark the begin of a series of (send recv)
+    virtual Status group_start() = 0;
+    // mark the end of a series of (send recv)
+    virtual Status group_end() = 0;
 
 protected:
     uint32_t m_nranks;

@@ -20,6 +20,10 @@ Status Communicator::init(const char* master_ip, int port) {
     return do_init();
 }
 
+Status Communicator::init(BcastCallback cb) {
+    return do_init(cb);
+}
+
 Status Communicator::recv(void* recvbuf, size_t len, DType dtype, uint32_t rank,
                           std::shared_ptr<Context> ctx) {
     size_t type_size = get_dtype_size(dtype);

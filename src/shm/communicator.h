@@ -15,9 +15,9 @@
 #include <cstddef>
 #include <memory>
 #include <mutex>
+#include <queue>
 #include <thread>
 #include <vector>
-#include <queue>
 #include "megray/common.h"
 #include "megray/communicator.h"
 #include "shm_ipc.h"
@@ -29,38 +29,39 @@
 #endif
 namespace MegRay {
 
-struct Op{
-    void *shm_buffer;
+struct Op {
+    void* shm_buffer;
     volatile int *send_signal, *reduce_signal, *shm_mutex, *op_begin;
-    const void *sendbuff;
-    void *recvbuff;
+    const void* sendbuff;
+    void* recvbuff;
     size_t len, k;
     DType dtype;
     ReduceOp op;
     bool is_nop = false;
 };
 
-template<typename T>
+template <typename T>
 class BlockingQueue {
 public:
     T pop();
     void push(T op);
+
 private:
     std::queue<T> m_ops;
     std::mutex m_queue_mtx;
     std::condition_variable m_queue_cv;
 };
 
-template<typename T>
+template <typename T>
 T BlockingQueue<T>::pop() {
     std::unique_lock<std::mutex> lock{m_queue_mtx};
-    m_queue_cv.wait(lock, [this]() {return m_ops.size() > 0;});
+    m_queue_cv.wait(lock, [this]() { return m_ops.size() > 0; });
     T ret = m_ops.front();
     m_ops.pop();
     return ret;
 }
 
-template<typename T>
+template <typename T>
 void BlockingQueue<T>::push(T op) {
     std::unique_lock<std::mutex> lock{m_queue_mtx};
     m_ops.push(op);
@@ -68,7 +69,7 @@ void BlockingQueue<T>::push(T op) {
     m_queue_cv.notify_one();
 }
 
-struct Shm{
+struct Shm {
     void* addr;
     key_t key;
     size_t size;
@@ -88,6 +89,7 @@ public:
     ~ShmCommunicator();
     // init function
     Status do_init() override;
+    Status do_init(BcastCallback) override;
     // _send function
     Status _send(const void* sendbuff, size_t size, uint32_t rank,
                  std::shared_ptr<Context> ctx) override;
@@ -125,6 +127,9 @@ public:
     Status reduce(const void* sendbuff, void* recvbuff, size_t len, DType dtype,
                   ReduceOp op, uint32_t root,
                   std::shared_ptr<Context> ctx) override;
+
+    Status group_start() override;
+    Status group_end() override;
 
 protected:
     // allocate cuda stream for parllel
@@ -191,4 +196,3 @@ private:
 };
 
 }  // namespace MegRay
-

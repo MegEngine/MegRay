@@ -51,6 +51,18 @@ Status RcclCommunicator::do_init() {
     return MEGRAY_OK;
 }
 
+Status RcclCommunicator::do_init(BcastCallback cb) {
+    uint32_t root = 0;
+    ncclUniqueId uid;
+    if (m_rank == root) {
+        ncclGetUniqueId(&uid);
+    }
+    cb(uid.internal, NCCL_UNIQUE_ID_BYTES);
+    m_rccl = std::make_unique<RcclCommunicatorPrivate>();
+    RCCL_CHECK(ncclCommInitRank(&m_nccl->m_comm, m_nranks, uid, m_rank));
+    return MEGRAY_OK;
+}
+
 Status RcclCommunicator::_send(const void* sendbuff, size_t size, uint32_t rank,
                                std::shared_ptr<Context> ctx) {
     // check context type and get hip stream
@@ -217,5 +229,16 @@ Status RcclCommunicator::reduce(const void* sendbuff, void* recvbuff,
     HIP_CHECK(hipStreamSynchronize(stream));
     return MEGRAY_OK;
 }
+
+Status RcclCommunicator::group_start() {
+    MEGRAY_RCCL_ERR("megray: not impl group end");
+    return MEGRAY_OK;
+}
+
+Status RcclCommunicator::group_end() {
+    MEGRAY_RCCL_ERR("megray: not impl group end");
+    return MEGRAY_OK;
+}
+
 
 }  // namespace MegRay

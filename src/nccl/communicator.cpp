@@ -51,6 +51,18 @@ Status NcclCommunicator::do_init() {
     return MEGRAY_OK;
 }
 
+Status NcclCommunicator::do_init(BcastCallback cb) {
+    uint32_t root = 0;
+    ncclUniqueId uid;
+    if (m_rank == root) {
+        ncclGetUniqueId(&uid);
+    }
+    cb(uid.internal, NCCL_UNIQUE_ID_BYTES);
+    m_nccl = std::make_unique<NcclCommunicatorPrivate>();
+    NCCL_CHECK(ncclCommInitRank(&m_nccl->m_comm, m_nranks, uid, m_rank));
+    return MEGRAY_OK;
+}
+
 Status NcclCommunicator::_send(const void* sendbuff, size_t size, uint32_t rank,
                                std::shared_ptr<Context> ctx) {
     // check context type and get cuda stream
@@ -212,6 +224,18 @@ Status NcclCommunicator::reduce(const void* sendbuff, void* recvbuff,
     NCCL_CHECK(ncclReduce(sendbuff, recvbuff, len, get_nccl_dtype(dtype),
                           get_nccl_reduce_op(op), root, m_nccl->m_comm,
                           stream));
+    return MEGRAY_OK;
+}
+
+Status NcclCommunicator::group_start() {
+    CHECK_LAUNCH_MODE;
+    ncclGroupStart();
+    return MEGRAY_OK;
+}
+
+Status NcclCommunicator::group_end() {
+    CHECK_LAUNCH_MODE;
+    ncclGroupEnd();
     return MEGRAY_OK;
 }
 

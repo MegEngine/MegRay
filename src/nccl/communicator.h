@@ -31,7 +31,8 @@ public:
     ~NcclCommunicator();
 
     Status do_init() override;
-
+    Status do_init(BcastCallback cb) override;
+ 
     Status _send(const void* sendbuff, size_t size, uint32_t rank,
                  std::shared_ptr<Context> ctx) override;
 
@@ -67,7 +68,10 @@ public:
     Status reduce(const void* sendbuff, void* recvbuff, size_t len, DType dtype,
                   ReduceOp op, uint32_t root,
                   std::shared_ptr<Context> ctx) override;
-
+    
+    Status group_start() override;
+    Status group_end() override;
+    
 private:
     std::unique_ptr<NcclCommunicatorPrivate> m_nccl;
 };

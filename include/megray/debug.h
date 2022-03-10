@@ -57,7 +57,6 @@ void MEGRAY_LOG(const char* level, const char* file, int line, const char* fmt,
 
 class Exception : public std::runtime_error {
 public:
-    Exception() = default;
     explicit Exception(const std::string& msg) : std::runtime_error(msg) {}
 };
 

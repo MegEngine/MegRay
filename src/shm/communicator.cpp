@@ -22,9 +22,10 @@
 namespace MegRay {
 // for allreduce only for now
 void ShmCommunicator::persistent_thread() {
-    while(1) {
+    while (1) {
         auto op = m_oplist.pop();
-        if (op.is_nop) break;
+        if (op.is_nop)
+            break;
         // reset shm signal
         op.send_signal[m_rank] = 0;
         op.reduce_signal[m_rank] = 0;
@@ -52,19 +53,22 @@ void ShmCommunicator::persistent_thread() {
             tmp_size += chunk_sizes[m_rank * op.k + i];
         }
 
-        size_t work_rank = ring_add(m_rank*op.k, op.k, chunks);
-        for (size_t i = op.k+1;i <= chunks;i++) {
-            while(op.send_signal[m_rank]<i);
+        size_t work_rank = ring_add(m_rank * op.k, op.k, chunks);
+        for (size_t i = op.k + 1; i <= chunks; i++) {
+            while (op.send_signal[m_rank] < i)
+                ;
             cpu_reduce((char*)op.shm_buffer + offsets[work_rank],
                        (char*)op.shm_buffer + offsets[work_rank],
                        (char*)op.shm_buffer + buff_size + offsets[work_rank],
                        op.dtype, op.op, chunk_sizes[work_rank]);
-            if (i == chunks) _shm_barrier((volatile int*)op.shm_mutex);
+            if (i == chunks)
+                _shm_barrier((volatile int*)op.shm_mutex);
             op.reduce_signal[m_rank] = i;
             work_rank = ring_add(work_rank, 1, chunks);
         }
 
-        while(op.send_signal[m_rank] <= chunks);
+        while (op.send_signal[m_rank] <= chunks)
+            ;
         // kernal end
         _shm_barrier(op.shm_mutex);
     }
@@ -73,11 +77,12 @@ void ShmCommunicator::persistent_thread() {
 ShmCommunicator::ShmCommunicator(int ranks, int rank)
         : Communicator(ranks, rank) {
     alloc_cuda_stream();
-    m_persistent_thread = std::thread(&ShmCommunicator::persistent_thread, this);
+    m_persistent_thread =
+            std::thread(&ShmCommunicator::persistent_thread, this);
 }
 
 void ShmCommunicator::free_shm() {
-    for (auto shm:m_shm_list) {
+    for (auto shm : m_shm_list) {
         CUDA_ASSERT(cudaHostUnregister(shm.addr));
         int ret = shmdt(shm.addr);
         shmctl(shm.shmid, IPC_RMID, NULL);
@@ -85,6 +90,11 @@ void ShmCommunicator::free_shm() {
 }
 
 Status ShmCommunicator::do_init() {
+    return MEGRAY_OK;
+}
+
+Status ShmCommunicator::do_init(BcastCallback cb){
+    MEGRAY_ERROR("shm do_init not impl");
     return MEGRAY_OK;
 }
 
@@ -148,9 +158,10 @@ void* ShmCommunicator::alloc_shm(size_t size) {
     if (m_shm_list.size() > 0) {
         max_size = m_shm_list.back().size;
     }
-    if (size <= max_size) return m_shm_list.back().addr;
-    if (size > max_size && size < max_size*2) {
-        size = max_size*2;
+    if (size <= max_size)
+        return m_shm_list.back().addr;
+    if (size > max_size && size < max_size * 2) {
+        size = max_size * 2;
     }
     Shm tmp_shm;
     // todo random num
@@ -210,5 +221,14 @@ ShmCommunicator::~ShmCommunicator() {
     m_oplist.push(op);
     m_persistent_thread.join();
     free_shm();
+}
+Status ShmCommunicator::group_start() {
+    MEGRAY_ERROR("megray: not impl shm group start");
+    return MEGRAY_OK;
+}
+
+Status ShmCommunicator::group_end() {
+    MEGRAY_ERROR("megray: not impl shm group end");
+    return MEGRAY_OK;
 }
 }  // namespace MegRay
