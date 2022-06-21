@@ -14,7 +14,9 @@
 
 #include "rccl.h"
 
+#include "megray/debug.h"
 #include "megray/hip_context.h"
+
 #include "utils.h"
 
 #define CHECK_LAUNCH_MODE                                                  \
@@ -59,7 +61,7 @@ Status RcclCommunicator::do_init(BcastCallback cb) {
     }
     cb(uid.internal, NCCL_UNIQUE_ID_BYTES);
     m_rccl = std::make_unique<RcclCommunicatorPrivate>();
-    RCCL_CHECK(ncclCommInitRank(&m_nccl->m_comm, m_nranks, uid, m_rank));
+    RCCL_CHECK(ncclCommInitRank(&m_rccl->m_comm, m_nranks, uid, m_rank));
     return MEGRAY_OK;
 }
 
@@ -231,13 +233,13 @@ Status RcclCommunicator::reduce(const void* sendbuff, void* recvbuff,
 }
 
 Status RcclCommunicator::group_start() {
-    MEGRAY_RCCL_ERR("megray: not impl group end");
-    return MEGRAY_OK;
+    MEGRAY_ERROR("megray: not impl group end");
+    return MEGRAY_NOT_IMPLEMENTED;
 }
 
 Status RcclCommunicator::group_end() {
-    MEGRAY_RCCL_ERR("megray: not impl group end");
-    return MEGRAY_OK;
+    MEGRAY_ERROR("megray: not impl group end");
+    return MEGRAY_NOT_IMPLEMENTED;
 }
 
 
