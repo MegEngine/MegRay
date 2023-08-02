@@ -24,6 +24,10 @@
 #include "megray/hip_context.h"
 #endif
 
+#ifdef MEGRAY_WITH_CNCL
+#include "megray/cnrt_context.h"
+#endif
+
 namespace MegRay {
 
 /*!

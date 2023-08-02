@@ -33,7 +33,9 @@ typedef enum {
     MEGRAY_NOT_IMPLEMENTED = 9,
     MEGRAY_HIP_ERR = 10,
     MEGRAY_RCCL_ERR = 11,
-    MEGRAY_STATUS_COUNT = 12,
+    MEGRAY_CNRT_ERR = 12,
+    MEGRAY_CNCL_ERR = 13,
+    MEGRAY_STATUS_COUNT = 14,
 } Status;
 
 #define MEGRAY_CHECK(expr)                      \
@@ -95,12 +97,33 @@ typedef enum {
         }                                               \
     } while (0)
 
+#define CNRT_CHECK(expr)                                \
+    do {                                                \
+        cnrtRet_t status = (expr);                      \
+        if (status != CNRT_RET_SUCCESS) {               \
+            MEGRAY_ERROR("cnrt error [%d]: %s", status, \
+                         cnrtGetErrorStr(status));      \
+            return MEGRAY_CNRT_ERR;                     \
+        }                                               \
+    } while (0)
+
+#define CNRT_ASSERT(expr)                               \
+    do {                                                \
+        cnrtRet_t status = (expr);                      \
+        if (status != CNRT_RET_SUCCESS) {               \
+            MEGRAY_ERROR("cnrt error [%d]: %s", status, \
+                         cnrtGetErrorStr(status));      \
+            MEGRAY_THROW("cnrt error");                 \
+        }                                               \
+    } while (0)
+
 typedef enum {
     MEGRAY_NCCL = 0,
     MEGRAY_UCX = 1,
     MEGRAY_RCCL = 2,
     MEGRAY_SHM = 3,
-    MEGRAY_BACKEND_COUNT = 4,
+    MEGRAY_CNCL = 4,
+    MEGRAY_BACKEND_COUNT = 5,
 } Backend;
 
 typedef enum {

@@ -103,12 +103,12 @@ size_t run_test(WorkerFunc func, Arguments args) {
 void worker(KernelFunc kernel, Arguments args, int dev, size_t* res) {
     int world_size = args.n_nodes * args.n_devs;
     int global_rank = args.node_rank * args.n_devs + dev;
-
     auto trait = get_context_trait(get_preferred_context(args.backend));
+
     trait.set_device(dev);
     auto context = trait.make_context();
-
     auto comm = MegRay::get_communicator(world_size, global_rank, args.backend);
+
     comm->init(args.master_ip.c_str(), args.port);
 
     void* in_ptr = trait.alloc(args.in_bufsize);
@@ -269,6 +269,10 @@ void init_maps(Arguments args) {
     if (args.backends == "ALL" || args.backends == "SHM")
         backends.emplace_back("SHM", MegRay::MEGRAY_SHM);
 #endif
+#ifdef MEGRAY_WITH_CNCL
+    if (args.backends == "ALL" || args.backends == "CNCL")
+        backends.emplace_back("CNCL", MegRay::MEGRAY_CNCL);
+#endif
 
     if (args.func_select == "ALL") {
         funcs.emplace_back("send_recv", run_send_recv);
@@ -319,6 +323,7 @@ int main_test(Arguments args) {
               << args.n_nodes * args.n_devs << " GPUs" << std::endl;
     std::cout << "Master address " << args.master_ip << ":" << args.port
               << std::endl;
+    std::cout << args.backends << std::endl;
     std::cout << "sizes: ";
     for (auto& s : args.sizes) {
         std::cout << s << ", ";
@@ -352,7 +357,7 @@ int main_test(Arguments args) {
                 args.port = test_port;
                 args.backend = b_it.second;
                 args.bufsize = s_it;
-
+                std::cout << "360" << std::endl;
                 size_t avg_time = run_test(f_it.second, args);
                 float speed = 1.0 * s_it / avg_time / 1000;
 
