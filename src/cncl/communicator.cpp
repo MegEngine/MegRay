@@ -81,14 +81,14 @@ Status CnclCommunicator::_recv(void* recvbuff, size_t size, uint32_t rank,
 Status CnclCommunicator::scatter(const void* sendbuff, void* recvbuff,
                                  size_t recvlen, DType dtype, uint32_t root,
                                  std::shared_ptr<Context> ctx) {
-    MEGRAY_ERROR("megray: not impl scatter");
+    MEGRAY_ERROR("megray: the cncl backend does not support scatter");
     return MEGRAY_NOT_IMPLEMENTED;
 }
 
 Status CnclCommunicator::gather(const void* sendbuff, void* recvbuff,
                                 size_t sendlen, DType dtype, uint32_t root,
                                 std::shared_ptr<Context> ctx) {
-    MEGRAY_ERROR("megray: not impl gather");
+    MEGRAY_ERROR("megray: the cncl backend does not support gather");
     return MEGRAY_NOT_IMPLEMENTED;
 }
 
@@ -177,12 +177,12 @@ Status CnclCommunicator::reduce(const void* sendbuff, void* recvbuff,
 }
 
 Status CnclCommunicator::group_start() {
-    MEGRAY_ERROR("megray: not impl group start");
+    MEGRAY_ERROR("megray: the cncl backend does not support group_start");
     return MEGRAY_NOT_IMPLEMENTED;
 }
 
 Status CnclCommunicator::group_end() {
-    MEGRAY_ERROR("megray: not impl group end");
+    MEGRAY_ERROR("megray: the cncl backend does not support group_end");
     return MEGRAY_NOT_IMPLEMENTED;
 }
 
