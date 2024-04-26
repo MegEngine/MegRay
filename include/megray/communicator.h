@@ -90,7 +90,7 @@ public:
     virtual Status reduce(const void* sendbuff, void* recvbuff, size_t len,
                           DType dtype, ReduceOp op, uint32_t root,
                           std::shared_ptr<Context> ctx) = 0;
-    
+
     // mark the begin of a series of (send recv)
     virtual Status group_start() = 0;
     // mark the end of a series of (send recv)

@@ -63,11 +63,11 @@ Status ShmCommunicator::_shm_all_reduce(const void* sendbuff, void* recvbuff,
     all_reduce_op.op = op;
     all_reduce_op.recvbuff = recvbuff;
     all_reduce_op.sendbuff = sendbuff;
-    all_reduce_op.op_begin = (volatile int*)shmadd+m_rank;
+    all_reduce_op.op_begin = (volatile int*)shmadd + m_rank;
     all_reduce_op.shm_mutex = (int*)shmadd + m_nranks;
-    all_reduce_op.send_signal = (int*)shmadd + m_nranks*2;
-    all_reduce_op.reduce_signal = (int*)shmadd + m_nranks*3;
-    all_reduce_op.shm_buffer = (int*)shmadd + m_nranks*4;
+    all_reduce_op.send_signal = (int*)shmadd + m_nranks * 2;
+    all_reduce_op.reduce_signal = (int*)shmadd + m_nranks * 3;
+    all_reduce_op.shm_buffer = (int*)shmadd + m_nranks * 4;
     m_oplist.push(all_reduce_op);
 
     // launch kernel
@@ -75,41 +75,43 @@ Status ShmCommunicator::_shm_all_reduce(const void* sendbuff, void* recvbuff,
     // wait begin
     stream_wait_signal(all_reduce_op.op_begin, 1, stream);
     stream_set_signal(all_reduce_op.op_begin, 0, stream);
-    CUDA_ASSERT(cudaMemcpyAsync((char*)all_reduce_op.shm_buffer + offsets[m_rank * k],
-                                (char*)sendbuff + offsets[m_rank * k],
-                                tmp_size * size, cudaMemcpyDeviceToHost,
-                                stream));
+    CUDA_ASSERT(cudaMemcpyAsync(
+            (char*)all_reduce_op.shm_buffer + offsets[m_rank * k],
+            (char*)sendbuff + offsets[m_rank * k], tmp_size * size,
+            cudaMemcpyDeviceToHost, stream));
     stream_set_signal(all_reduce_op.send_signal + m_rank, k, stream);
     stream_set_signal(all_reduce_op.reduce_signal + m_rank, k, stream);
     uint32_t work_rank;
     work_rank = ring_add(m_rank * k, k, chunks);
     size_t right_rank = ring_add(m_rank, 1, m_nranks);
     // wait last reduction done, copy ith part
-    for (size_t i = k+1; i <= chunks; i++) {
-        stream_wait_signal(all_reduce_op.reduce_signal + right_rank, i-k, stream);
-        CUDA_ASSERT(cudaMemcpyAsync(
-                (char*)all_reduce_op.shm_buffer + buff_size + offsets[work_rank],
-                (char*)sendbuff + offsets[work_rank],
-                chunk_sizes[work_rank] * size, cudaMemcpyDeviceToHost,
-                stream));
+    for (size_t i = k + 1; i <= chunks; i++) {
+        stream_wait_signal(all_reduce_op.reduce_signal + right_rank, i - k,
+                           stream);
+        CUDA_ASSERT(cudaMemcpyAsync((char*)all_reduce_op.shm_buffer +
+                                            buff_size + offsets[work_rank],
+                                    (char*)sendbuff + offsets[work_rank],
+                                    chunk_sizes[work_rank] * size,
+                                    cudaMemcpyDeviceToHost, stream));
         stream_set_signal(all_reduce_op.send_signal + m_rank, i, stream);
         work_rank = ring_add(work_rank, 1, chunks);
     }
-    for (int i = 0;i < k;i++) {
-        work_rank = ring_sub(m_rank*k+i, k, chunks);
+    for (int i = 0; i < k; i++) {
+        work_rank = ring_sub(m_rank * k + i, k, chunks);
         int now_rank = m_rank;
-        for (int j = 0;j < m_nranks;j++) {
-            stream_wait_signal(all_reduce_op.reduce_signal + now_rank, chunks-k+i+1, stream);
+        for (int j = 0; j < m_nranks; j++) {
+            stream_wait_signal(all_reduce_op.reduce_signal + now_rank,
+                               chunks - k + i + 1, stream);
             CUDA_ASSERT(cudaMemcpyAsync(
-                (char*)recvbuff + offsets[work_rank],
-                (char*)all_reduce_op.shm_buffer + offsets[work_rank],
-                chunk_sizes[work_rank] * size, cudaMemcpyHostToDevice,
-                stream));
+                    (char*)recvbuff + offsets[work_rank],
+                    (char*)all_reduce_op.shm_buffer + offsets[work_rank],
+                    chunk_sizes[work_rank] * size, cudaMemcpyHostToDevice,
+                    stream));
             work_rank = ring_add(work_rank, k, chunks);
             now_rank = ring_add(now_rank, 1, m_nranks);
         }
     }
-    stream_set_signal(all_reduce_op.send_signal + m_rank, chunks+1, stream);
+    stream_set_signal(all_reduce_op.send_signal + m_rank, chunks + 1, stream);
 
     return MEGRAY_OK;
 }

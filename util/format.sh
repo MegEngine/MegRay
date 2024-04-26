@@ -11,6 +11,6 @@ for dir in $dirs; do
          -o -name '*.h' \
          -o -name '*.hh' \
          -o -name '*.hpp' \) \
-         -exec clang-format -i '{}' \;
+         -exec clang-format-12 -i '{}' \;
     popd &>/dev/null
 done

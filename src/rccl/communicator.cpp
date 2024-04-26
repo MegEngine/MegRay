@@ -230,5 +230,4 @@ Status RcclCommunicator::group_end() {
     return MEGRAY_NOT_IMPLEMENTED;
 }
 
-
 }  // namespace MegRay

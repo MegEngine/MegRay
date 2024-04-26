@@ -1,4 +1,4 @@
- #include "utils.h"
+#include "utils.h"
 
 namespace MegRay {
 
@@ -57,20 +57,21 @@ void cpu_reduce(void* dst, void* a, void* b, DType dtype, ReduceOp op,
     }
 }
 
-struct Param{
+struct Param {
     volatile int* ptr;
     int x;
 };
 
-void CUDART_CB MyCallback_set(void* param){
+void CUDART_CB MyCallback_set(void* param) {
     Param* p = (Param*)param;
     *p->ptr = p->x;
     delete p;
 }
 
-void CUDART_CB MyCallback_wait(void* param){
+void CUDART_CB MyCallback_wait(void* param) {
     Param* p = (Param*)param;
-    while(*p->ptr < p->x);
+    while (*p->ptr < p->x)
+        ;
     delete p;
 }
 

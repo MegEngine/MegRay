@@ -81,7 +81,7 @@ Status ShmCommunicator::do_init() {
     return MEGRAY_OK;
 }
 
-Status ShmCommunicator::do_init(BcastCallback cb){
+Status ShmCommunicator::do_init(BcastCallback cb) {
     MEGRAY_ERROR("shm do_init not impl");
     return MEGRAY_OK;
 }
