@@ -261,6 +261,10 @@ void init_maps(Arguments args) {
     if (args.backends == "ALL" || args.backends == "CNCL")
         backends.emplace_back("CNCL", MegRay::MEGRAY_CNCL);
 #endif
+#ifdef MEGRAY_WITH_HCCL
+    if (args.backends == "ALL" || args.backends == "HCCL")
+        backends.emplace_back("HCCL", MegRay::MEGRAY_HCCL);
+#endif
 
     if (args.func_select == "ALL") {
         funcs.emplace_back("send_recv", run_send_recv);

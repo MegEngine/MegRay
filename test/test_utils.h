@@ -46,6 +46,16 @@ void memcpy_h2d_cambricon(void* dst, void* src, size_t len,
 void memcpy_d2h_cambricon(void* dst, void* src, size_t len,
                           std::shared_ptr<Context> ctx);
 
+void* alloc_ascend(size_t size);
+void set_device_ascend(size_t device);
+void free_ascend(void* ptr);
+std::shared_ptr<Context> make_context_ascend();
+void sync_context_ascend(std::shared_ptr<Context> context);
+void memcpy_h2d_ascend(void* dst, void* src, size_t len,
+                       std::shared_ptr<Context> ctx);
+void memcpy_d2h_ascend(void* dst, void* src, size_t len,
+                       std::shared_ptr<Context> ctx);
+
 static ContextTrait context_trait_array[MEGRAY_CTX_COUNT] = {
         {},
         {&alloc_cuda, &set_device_cuda, &free_cuda, &make_context_cuda,
@@ -55,6 +65,8 @@ static ContextTrait context_trait_array[MEGRAY_CTX_COUNT] = {
         {&alloc_cambricon, &set_device_cambricon, &free_cambricon,
          &make_context_cambricon, &sync_context_cambricon,
          &memcpy_h2d_cambricon, &memcpy_d2h_cambricon},
+        {&alloc_ascend, &set_device_ascend, &free_ascend, &make_context_ascend,
+         &sync_context_ascend, &memcpy_h2d_ascend, &memcpy_d2h_ascend},
 };
 
 static ContextType get_preferred_context(Backend backend) {
@@ -69,6 +81,8 @@ static ContextType get_preferred_context(Backend backend) {
             return MEGRAY_CTX_CUDA;
         case MEGRAY_CNCL:
             return MEGRAY_CTX_CNRT;
+        case MEGRAY_HCCL:
+            return MEGRAY_CTX_ACLRT;
         default:
             return MEGRAY_CTX_DEFAULT;
     }

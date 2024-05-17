@@ -133,6 +133,8 @@ TEST(TestOpr, Scatter) {
     run_test_for_all<float>(nranks, inputs, outputs, run);
 }
 
+// HCCL not support gather now
+#ifndef MEGRAY_WITH_HCCL
 TEST(TestOpr, Gather) {
     const int nranks = 3;
     const size_t sendlen = 10;
@@ -182,6 +184,7 @@ TEST(TestOpr, Gather) {
     };
     run_test_for_all<float>(nranks, inputs, outputs, run);
 }
+#endif
 
 TEST(TestOpr, AllToAll) {
     const int nranks = 3;

@@ -20,6 +20,10 @@
 #include "cncl/communicator.h"
 #endif
 
+#ifdef MEGRAY_WITH_HCCL
+#include "hccl/communicator.h"
+#endif
+
 namespace MegRay {
 
 std::shared_ptr<Communicator> get_communicator(uint32_t nranks, uint32_t rank,
@@ -49,6 +53,11 @@ std::shared_ptr<Communicator> get_communicator(uint32_t nranks, uint32_t rank,
 #ifdef MEGRAY_WITH_CNCL
         case MEGRAY_CNCL:
             comm = std::make_shared<CnclCommunicator>(nranks, rank);
+            break;
+#endif
+#ifdef MEGRAY_WITH_HCCL
+        case MEGRAY_HCCL:
+            comm = std::make_shared<HcclCommunicator>(nranks, rank);
             break;
 #endif
         default:

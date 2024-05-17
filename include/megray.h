@@ -16,6 +16,10 @@
 #include "megray/cnrt_context.h"
 #endif
 
+#ifdef MEGRAY_WITH_HCCL
+#include "megray/aclrt_context.h"
+#endif
+
 namespace MegRay {
 
 /*!

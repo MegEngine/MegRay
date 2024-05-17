@@ -36,4 +36,7 @@ if(${MEGRAY_WITH_CNCL})
     target_link_libraries(megray PUBLIC megray_cncl)
 endif()
 
-
+if (${MEGRAY_WITH_HCCL})
+    add_subdirectory(hccl)
+    target_link_libraries(megray PUBLIC megray_hccl)
+endif()

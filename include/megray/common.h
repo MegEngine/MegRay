@@ -23,7 +23,9 @@ typedef enum {
     MEGRAY_RCCL_ERR = 11,
     MEGRAY_CNRT_ERR = 12,
     MEGRAY_CNCL_ERR = 13,
-    MEGRAY_STATUS_COUNT = 14,
+    MEGRAY_ACLRT_ERR = 14,
+    MEGRAY_HCCL_ERR = 15,
+    MEGRAY_STATUS_COUNT = 16,
 } Status;
 
 #define MEGRAY_CHECK(expr)                      \
@@ -105,13 +107,32 @@ typedef enum {
         }                                               \
     } while (0)
 
+#define ACL_CHECK(expr)                                                       \
+    do {                                                                      \
+        aclError status = (expr);                                             \
+        if (status != ACL_SUCCESS) {                                          \
+            MEGRAY_ERROR("acl error [%d]: %s", status, aclGetRecentErrMsg()); \
+            return MEGRAY_ACLRT_ERR;                                          \
+        }                                                                     \
+    } while (0)
+
+#define ACL_ASSERT(expr)                                                      \
+    do {                                                                      \
+        aclError status = (expr);                                             \
+        if (status != ACL_SUCCESS) {                                          \
+            MEGRAY_ERROR("acl error [%d]: %s", status, aclGetRecentErrMsg()); \
+            MEGRAY_THROW("acl error");                                        \
+        }                                                                     \
+    } while (0)
+
 typedef enum {
     MEGRAY_NCCL = 0,
     MEGRAY_UCX = 1,
     MEGRAY_RCCL = 2,
     MEGRAY_SHM = 3,
     MEGRAY_CNCL = 4,
-    MEGRAY_BACKEND_COUNT = 5,
+    MEGRAY_HCCL = 5,
+    MEGRAY_BACKEND_COUNT = 6,
 } Backend;
 
 typedef enum {
