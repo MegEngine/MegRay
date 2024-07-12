@@ -41,8 +41,6 @@ Status HcclCommunicator::do_init(BcastCallback cb) {
                                          HCCL_ROOT_INFO_BYTES, root));
     }
 
-    MEGRAY_CHECK(m_client->broadcast(&root_info, &root_info,
-                                     HCCL_ROOT_INFO_BYTES, root));
     m_hccl = std::make_unique<HcclCommunicatorPrivate>();
     MEGRAY_HCCL_ASSERT(HcclCommInitRootInfo(m_nranks, &root_info, m_rank,
                                             &m_hccl->m_comm));

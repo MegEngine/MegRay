@@ -48,6 +48,10 @@ TEST_COMMUNICATOR_INIT(RCCL)
 TEST_COMMUNICATOR_INIT(SHM)
 #endif  // MEGRAY_WITH_SHM
 
+#ifdef MEGRAY_WITH_HCCL
+TEST_COMMUNICATOR_INIT(HCCL)
+#endif  // MEGRAY_WITH_HCCL
+
 TEST(TestOpr, SendRecv) {
     std::string msg("test_message");
     const int nranks = 2;
