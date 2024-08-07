@@ -149,8 +149,17 @@ Status HcclCommunicator::broadcast(const void* sendbuff, void* recvbuff,
 
     if (m_rank == root) {
         size_t elem_size = get_dtype_size(dtype);
-        aclrtMemcpyAsync(recvbuff, len * elem_size, const_cast<void*>(sendbuff),
-                         len * elem_size, ACL_MEMCPY_DEVICE_TO_DEVICE, stream);
+        if (reinterpret_cast<uintptr_t>(recvbuff) % 64 != 0 ||
+            reinterpret_cast<uintptr_t>(const_cast<void*>(sendbuff)) % 64 !=
+                    0) {
+            aclrtSynchronizeStream(stream);
+            aclrtMemcpy(recvbuff, len * elem_size, const_cast<void*>(sendbuff),
+                        len * elem_size, ACL_MEMCPY_DEVICE_TO_DEVICE);
+        } else {
+            aclrtMemcpyAsync(recvbuff, len * elem_size,
+                             const_cast<void*>(sendbuff), len * elem_size,
+                             ACL_MEMCPY_DEVICE_TO_DEVICE, stream);
+        }
         MEGRAY_HCCL_ASSERT(HcclBroadcast(const_cast<void*>(sendbuff), len,
                                          as_hccl_dtype(dtype), root,
                                          m_hccl->m_comm, stream));

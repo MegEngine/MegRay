@@ -36,17 +36,29 @@ void sync_context_ascend(std::shared_ptr<Context> context) {
 void memcpy_h2d_ascend(void* dst, void* src, size_t len,
                        std::shared_ptr<Context> ctx) {
     auto stream = static_cast<AclrtContext*>(ctx.get())->get_stream();
-    ACL_ASSERT(aclrtMemcpyAsync(dst, len, src, len, ACL_MEMCPY_HOST_TO_DEVICE,
-                                stream));
-    ACL_ASSERT(aclrtSynchronizeStream(stream));
+    if (reinterpret_cast<uintptr_t>(dst) % 64 != 0 ||
+        reinterpret_cast<uintptr_t>(src) % 64 != 0) {
+        ACL_ASSERT(aclrtSynchronizeStream(stream));
+        ACL_ASSERT(aclrtMemcpy(dst, len, src, len, ACL_MEMCPY_HOST_TO_DEVICE));
+    } else {
+        ACL_ASSERT(aclrtMemcpyAsync(dst, len, src, len,
+                                    ACL_MEMCPY_HOST_TO_DEVICE, stream));
+        ACL_ASSERT(aclrtSynchronizeStream(stream));
+    }
 }
 
 void memcpy_d2h_ascend(void* dst, void* src, size_t len,
                        std::shared_ptr<Context> ctx) {
     auto stream = static_cast<AclrtContext*>(ctx.get())->get_stream();
-    ACL_ASSERT(aclrtMemcpyAsync(dst, len, src, len, ACL_MEMCPY_DEVICE_TO_HOST,
-                                stream));
-    ACL_ASSERT(aclrtSynchronizeStream(stream));
+    if (reinterpret_cast<uintptr_t>(dst) % 64 != 0 ||
+        reinterpret_cast<uintptr_t>(src) % 64 != 0) {
+        ACL_ASSERT(aclrtSynchronizeStream(stream));
+        ACL_ASSERT(aclrtMemcpy(dst, len, src, len, ACL_MEMCPY_DEVICE_TO_HOST));
+    } else {
+        ACL_ASSERT(aclrtMemcpyAsync(dst, len, src, len,
+                                    ACL_MEMCPY_DEVICE_TO_HOST, stream));
+        ACL_ASSERT(aclrtSynchronizeStream(stream));
+    }
 }
 
 #else
